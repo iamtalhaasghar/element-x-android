@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.model.TimelineItemGroupPosition
@@ -101,6 +103,7 @@ fun MessageEventBubble(
     val bubbleShape = bubbleShape()
     val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
     val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     BoxWithConstraints(
         modifier = modifier
             .graphicsLayer {
@@ -112,7 +115,7 @@ fun MessageEventBubble(
                     drawCircle(
                         color = Color.Black,
                         center = Offset(
-                            x = 0f,
+                            x = if (isRtl) size.width else 0f,
                             y = yOffsetPx,
                         ),
                         radius = radiusPx,
@@ -129,13 +132,15 @@ fun MessageEventBubble(
                 .testTag(TestTags.messageBubble)
                 .widthIn(
                     min = MIN_BUBBLE_WIDTH,
-                    max = (constraints.maxWidth * BUBBLE_WIDTH_RATIO).toInt().toDp()
+                    max = (constraints.maxWidth * BUBBLE_WIDTH_RATIO)
+                        .toInt()
+                        .toDp()
                 )
                 .clip(bubbleShape)
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
-                    indication = rememberRipple(),
+                    indication = ripple(),
                     interactionSource = interactionSource
                 ),
             color = backgroundBubbleColor,

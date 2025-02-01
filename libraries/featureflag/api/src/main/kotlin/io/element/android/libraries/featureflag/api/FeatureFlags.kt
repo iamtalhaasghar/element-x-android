@@ -93,13 +93,7 @@ enum class FeatureFlags(
         key = "feature.qrCodeLogin",
         title = "Enable login using QR code",
         description = "Allow the user to login using the QR code flow",
-        defaultValue = { buildMeta ->
-            when (buildMeta.buildType) {
-                // TODO remove once the feature is ready to publish
-                BuildType.RELEASE -> false
-                else -> OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE
-            }
-        },
+        defaultValue = { OnBoardingConfig.CAN_LOGIN_WITH_QR_CODE },
         isFinished = false,
     ),
     IncomingShare(
@@ -123,12 +117,54 @@ enum class FeatureFlags(
         defaultValue = { true },
         isFinished = false,
     ),
-    InvisibleCrypto(
-        key = "feature.invisibleCrypto",
-        title = "Invisible Crypto",
+    OnlySignedDeviceIsolationMode(
+        key = "feature.onlySignedDeviceIsolationMode",
+        title = "Exclude insecure devices when sending/receiving messages",
         description = "This setting controls how end-to-end encryption (E2E) keys are shared." +
             " Enabling it will prevent the inclusion of devices that have not been explicitly verified by their owners." +
             " You'll have to stop and re-open the app manually for that setting to take effect.",
+        defaultValue = { false },
+        isFinished = false,
+    ),
+    Knock(
+        key = "feature.knock",
+        title = "Ask to join",
+        description = "Allow creating rooms which users can request access to.",
+        defaultValue = { false },
+        isFinished = false,
+    ),
+    MediaUploadOnSendQueue(
+        key = "feature.media_upload_through_send_queue",
+        title = "Media upload through send queue",
+        description = "Experimental support for treating media uploads as regular events, with an improved retry and cancellation implementation.",
+        defaultValue = { buildMeta -> buildMeta.buildType != BuildType.RELEASE },
+        isFinished = false,
+    ),
+    MediaCaptionCreation(
+        key = "feature.media_caption_creation",
+        title = "Allow creation of media captions",
+        description = null,
+        defaultValue = { true },
+        isFinished = false,
+    ),
+    MediaCaptionWarning(
+        key = "feature.media_caption_creation_warning",
+        title = "Show a compatibility warning on media captions creation",
+        description = null,
+        defaultValue = { true },
+        isFinished = false,
+    ),
+    MediaGallery(
+        key = "feature.media_gallery",
+        title = "Allow user to open the media gallery",
+        description = null,
+        defaultValue = { true },
+        isFinished = false,
+    ),
+    EventCache(
+        key = "feature.event_cache",
+        title = "Use SDK Event cache",
+        description = "Warning: you must kill and restart the app for the change to take effect.",
         defaultValue = { false },
         isFinished = false,
     ),

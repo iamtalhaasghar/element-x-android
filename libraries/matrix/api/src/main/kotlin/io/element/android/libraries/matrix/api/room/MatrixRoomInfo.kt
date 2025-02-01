@@ -12,6 +12,7 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.room.join.JoinRule
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -27,12 +28,20 @@ data class MatrixRoomInfo(
     val avatarUrl: String?,
     val isDirect: Boolean,
     val isPublic: Boolean,
+    val joinRule: JoinRule?,
     val isSpace: Boolean,
     val isTombstoned: Boolean,
     val isFavorite: Boolean,
     val canonicalAlias: RoomAlias?,
     val alternativeAliases: ImmutableList<RoomAlias>,
     val currentUserMembership: CurrentUserMembership,
+    /**
+     * Member who invited the current user to a room that's in the invited
+     * state.
+     *
+     * Can be missing if the room membership invite event is missing from the
+     * store.
+     */
     val inviter: RoomMember?,
     val activeMembersCount: Long,
     val invitedMembersCount: Long,
@@ -43,7 +52,26 @@ data class MatrixRoomInfo(
     val userDefinedNotificationMode: RoomNotificationMode?,
     val hasRoomCall: Boolean,
     val activeRoomCallParticipants: ImmutableList<UserId>,
+    val isMarkedUnread: Boolean,
+    /**
+     * "Interesting" messages received in that room, independently of the
+     * notification settings.
+     */
+    val numUnreadMessages: Long,
+    /**
+     * Events that will notify the user, according to their
+     * notification settings.
+     */
+    val numUnreadNotifications: Long,
+    /**
+     * Events causing mentions/highlights for the user, according to their
+     * notification settings.
+     */
+    val numUnreadMentions: Long,
     val heroes: ImmutableList<MatrixUser>,
     val pinnedEventIds: ImmutableList<EventId>,
     val creator: UserId?,
-)
+) {
+    val aliases: List<RoomAlias>
+        get() = listOfNotNull(canonicalAlias) + alternativeAliases
+}

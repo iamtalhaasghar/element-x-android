@@ -9,6 +9,7 @@ package io.element.android.features.preferences.impl.developer
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.rageshake.api.preferences.aRageshakePreferencesState
+import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.featureflag.ui.model.aFeatureUiModelList
 
@@ -17,7 +18,7 @@ open class DeveloperSettingsStateProvider : PreviewParameterProvider<DeveloperSe
         get() = sequenceOf(
             aDeveloperSettingsState(),
             aDeveloperSettingsState(
-                clearCacheAction = AsyncData.Loading()
+                clearCacheAction = AsyncAction.Loading
             ),
             aDeveloperSettingsState(
                 customElementCallBaseUrlState = aCustomElementCallBaseUrlState(
@@ -28,9 +29,10 @@ open class DeveloperSettingsStateProvider : PreviewParameterProvider<DeveloperSe
 }
 
 fun aDeveloperSettingsState(
-    clearCacheAction: AsyncData<Unit> = AsyncData.Uninitialized,
+    clearCacheAction: AsyncAction<Unit> = AsyncAction.Uninitialized,
     customElementCallBaseUrlState: CustomElementCallBaseUrlState = aCustomElementCallBaseUrlState(),
     isSimplifiedSlidingSyncEnabled: Boolean = false,
+    hideImagesAndVideos: Boolean = false,
     eventSink: (DeveloperSettingsEvents) -> Unit = {},
 ) = DeveloperSettingsState(
     features = aFeatureUiModelList(),
@@ -39,6 +41,7 @@ fun aDeveloperSettingsState(
     clearCacheAction = clearCacheAction,
     customElementCallBaseUrlState = customElementCallBaseUrlState,
     isSimpleSlidingSyncEnabled = isSimplifiedSlidingSyncEnabled,
+    hideImagesAndVideos = hideImagesAndVideos,
     eventSink = eventSink,
 )
 

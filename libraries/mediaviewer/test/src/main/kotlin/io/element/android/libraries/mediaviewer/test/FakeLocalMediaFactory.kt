@@ -10,11 +10,11 @@ package io.element.android.libraries.mediaviewer.test
 import android.net.Uri
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.media.MediaFile
+import io.element.android.libraries.mediaviewer.api.MediaInfo
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
 import io.element.android.libraries.mediaviewer.api.local.LocalMediaFactory
-import io.element.android.libraries.mediaviewer.api.local.MediaInfo
 import io.element.android.libraries.mediaviewer.api.util.FileExtensionExtractor
-import io.element.android.libraries.mediaviewer.api.util.FileExtensionExtractorWithoutValidation
+import io.element.android.libraries.mediaviewer.test.util.FileExtensionExtractorWithoutValidation
 import io.element.android.libraries.mediaviewer.test.viewer.aLocalMedia
 
 class FakeLocalMediaFactory(
@@ -32,10 +32,17 @@ class FakeLocalMediaFactory(
     override fun createFromUri(uri: Uri, mimeType: String?, name: String?, formattedFileSize: String?): LocalMedia {
         val safeName = name ?: fallbackName
         val mediaInfo = MediaInfo(
-            name = safeName,
+            filename = safeName,
+            caption = null,
             mimeType = mimeType ?: fallbackMimeType,
             formattedFileSize = formattedFileSize ?: fallbackFileSize,
-            fileExtension = fileExtensionExtractor.extractFromName(safeName)
+            fileExtension = fileExtensionExtractor.extractFromName(safeName),
+            senderId = null,
+            senderName = null,
+            senderAvatar = null,
+            dateSent = null,
+            dateSentFull = null,
+            waveform = null,
         )
         return aLocalMedia(uri, mediaInfo)
     }

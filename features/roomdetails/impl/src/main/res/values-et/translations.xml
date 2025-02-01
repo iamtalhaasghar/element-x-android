@@ -49,9 +49,12 @@
   <string name="screen_room_details_invite_people_title">"Kutsu osalejaid"</string>
   <string name="screen_room_details_leave_conversation_title">"Lahku vestlusest"</string>
   <string name="screen_room_details_leave_room_title">"Lahku jututoast"</string>
+  <string name="screen_room_details_media_gallery_title">"Meedia ja failid"</string>
   <string name="screen_room_details_notification_mode_custom">"Kohandatud"</string>
   <string name="screen_room_details_notification_mode_default">"Vaikimisi"</string>
   <string name="screen_room_details_notification_title">"Teavitused"</string>
+  <string name="screen_room_details_pinned_events_row_title">"Esiletõstetud sõnumid"</string>
+  <string name="screen_room_details_requests_to_join_title">"Liitumispalved"</string>
   <string name="screen_room_details_roles_and_permissions">"Rollid ja õigused"</string>
   <string name="screen_room_details_room_name_label">"Jututoa nimi"</string>
   <string name="screen_room_details_security_title">"Turvalisus"</string>
@@ -70,7 +73,7 @@
   </plurals>
   <string name="screen_room_member_list_manage_member_ban">"Eemalda ja sea suhtluskeeld"</string>
   <string name="screen_room_member_list_manage_member_remove">"Eemalda kasutaja jututoast"</string>
-  <string name="screen_room_member_list_manage_member_remove_confirmation_ban">"Eemalda kasutaja jututoast ja sea talle suhtluskeeld"</string>
+  <string name="screen_room_member_list_manage_member_remove_confirmation_ban">"Eemalda ja sea suhtluskeeld"</string>
   <string name="screen_room_member_list_manage_member_remove_confirmation_kick">"Ainult eemalda kasutaja"</string>
   <string name="screen_room_member_list_manage_member_remove_confirmation_title">"Kas eemaldama kasutaja ja seame talle tulevikuks suhtluskeelu?"</string>
   <string name="screen_room_member_list_manage_member_unban_action">"Eemalda suhtluskeeld"</string>

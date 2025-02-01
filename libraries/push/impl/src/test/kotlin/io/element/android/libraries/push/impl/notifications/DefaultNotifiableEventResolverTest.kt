@@ -42,6 +42,8 @@ import io.element.android.libraries.matrix.test.FakeMatrixClientProvider
 import io.element.android.libraries.matrix.test.notification.FakeNotificationService
 import io.element.android.libraries.matrix.test.notification.aNotificationData
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
 import io.element.android.libraries.push.impl.notifications.fake.FakeNotificationMediaRepo
 import io.element.android.libraries.push.impl.notifications.fixtures.aNotifiableMessageEvent
 import io.element.android.libraries.push.impl.notifications.model.FallbackNotifiableEvent
@@ -185,7 +187,7 @@ class DefaultNotifiableEventResolverTest {
                 aNotificationData(
                     content = NotificationContent.MessageLike.RoomMessage(
                         senderId = A_USER_ID_2,
-                        messageType = AudioMessageType(body = "Audio", MediaSource("url"), null)
+                        messageType = AudioMessageType("Audio", null, null, MediaSource("url"), null)
                     ),
                 )
             )
@@ -204,7 +206,7 @@ class DefaultNotifiableEventResolverTest {
                 aNotificationData(
                     content = NotificationContent.MessageLike.RoomMessage(
                         senderId = A_USER_ID_2,
-                        messageType = VideoMessageType(body = "Video", null, null, MediaSource("url"), null)
+                        messageType = VideoMessageType("Video", null, null, MediaSource("url"), null)
                     ),
                 )
             )
@@ -223,7 +225,7 @@ class DefaultNotifiableEventResolverTest {
                 aNotificationData(
                     content = NotificationContent.MessageLike.RoomMessage(
                         senderId = A_USER_ID_2,
-                        messageType = VoiceMessageType(body = "Voice", MediaSource("url"), null, null)
+                        messageType = VoiceMessageType("Voice", null, null, MediaSource("url"), null, null)
                     ),
                 )
             )
@@ -261,7 +263,7 @@ class DefaultNotifiableEventResolverTest {
                 aNotificationData(
                     content = NotificationContent.MessageLike.RoomMessage(
                         senderId = A_USER_ID_2,
-                        messageType = StickerMessageType("Sticker", MediaSource("url"), null),
+                        messageType = StickerMessageType("Sticker", null, null, MediaSource("url"), null),
                     ),
                 )
             )
@@ -280,7 +282,7 @@ class DefaultNotifiableEventResolverTest {
                 aNotificationData(
                     content = NotificationContent.MessageLike.RoomMessage(
                         senderId = A_USER_ID_2,
-                        messageType = FileMessageType("File", MediaSource("url"), null),
+                        messageType = FileMessageType("File", null, null, MediaSource("url"), null),
                     ),
                 )
             )
@@ -586,8 +588,9 @@ class DefaultNotifiableEventResolverTest {
                 noisy = false,
                 timestamp = A_TIMESTAMP,
                 senderDisambiguatedDisplayName = A_USER_NAME_2,
-                body = "Call in progress (unsupported)",
+                body = "Unsupported call",
                 imageUriString = null,
+                imageMimeType = null,
                 threadId = null,
                 roomName = A_ROOM_NAME,
                 roomAvatarPath = null,
@@ -667,6 +670,7 @@ class DefaultNotifiableEventResolverTest {
                 canBeReplaced = false,
                 isRedacted = false,
                 imageUriString = null,
+                imageMimeType = null,
                 type = EventType.CALL_NOTIFY,
             )
         )
@@ -702,6 +706,7 @@ class DefaultNotifiableEventResolverTest {
                 canBeReplaced = false,
                 isRedacted = false,
                 imageUriString = null,
+                imageMimeType = null,
                 type = EventType.CALL_NOTIFY,
             )
         )
@@ -798,6 +803,7 @@ class DefaultNotifiableEventResolverTest {
     private fun createDefaultNotifiableEventResolver(
         notificationService: FakeNotificationService? = FakeNotificationService(),
         notificationResult: Result<NotificationData?> = Result.success(null),
+        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
     ): DefaultNotifiableEventResolver {
         val context = RuntimeEnvironment.getApplication() as Context
         notificationService?.givenGetNotificationResult(notificationResult)
@@ -821,6 +827,7 @@ class DefaultNotifiableEventResolverTest {
             callNotificationEventResolver = DefaultCallNotificationEventResolver(
                 stringProvider = AndroidStringProvider(context.resources)
             ),
+            appPreferencesStore = appPreferencesStore,
         )
     }
 }

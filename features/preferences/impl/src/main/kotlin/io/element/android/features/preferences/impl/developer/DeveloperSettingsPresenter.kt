@@ -22,7 +22,8 @@ import io.element.android.appconfig.ElementCallConfig
 import io.element.android.features.logout.api.LogoutUseCase
 import io.element.android.features.preferences.impl.tasks.ClearCacheUseCase
 import io.element.android.features.preferences.impl.tasks.ComputeCacheSizeUseCase
-import io.element.android.features.rageshake.api.preferences.RageshakePreferencesPresenter
+import io.element.android.features.rageshake.api.preferences.RageshakePreferencesState
+import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
@@ -44,7 +45,7 @@ class DeveloperSettingsPresenter @Inject constructor(
     private val featureFlagService: FeatureFlagService,
     private val computeCacheSizeUseCase: ComputeCacheSizeUseCase,
     private val clearCacheUseCase: ClearCacheUseCase,
-    private val rageshakePresenter: RageshakePreferencesPresenter,
+    private val rageshakePresenter: Presenter<RageshakePreferencesState>,
     private val appPreferencesStore: AppPreferencesStore,
     private val buildMeta: BuildMeta,
     private val logoutUseCase: LogoutUseCase,
@@ -63,13 +64,16 @@ class DeveloperSettingsPresenter @Inject constructor(
             mutableStateOf<AsyncData<String>>(AsyncData.Uninitialized)
         }
         val clearCacheAction = remember {
-            mutableStateOf<AsyncData<Unit>>(AsyncData.Uninitialized)
+            mutableStateOf<AsyncAction<Unit>>(AsyncAction.Uninitialized)
         }
         val customElementCallBaseUrl by appPreferencesStore
             .getCustomElementCallBaseUrlFlow()
             .collectAsState(initial = null)
         val isSimplifiedSlidingSyncEnabled by appPreferencesStore
             .isSimplifiedSlidingSyncEnabledFlow()
+            .collectAsState(initial = false)
+        val hideImagesAndVideos by appPreferencesStore
+            .doesHideImagesAndVideosFlow()
             .collectAsState(initial = false)
 
         LaunchedEffect(Unit) {
@@ -91,7 +95,7 @@ class DeveloperSettingsPresenter @Inject constructor(
         val featureUiModels = createUiModels(features, enabledFeatures)
         val coroutineScope = rememberCoroutineScope()
         // Compute cache size each time the clear cache action value is changed
-        LaunchedEffect(clearCacheAction.value) {
+        LaunchedEffect(clearCacheAction.value.isSuccess()) {
             computeCacheSize(cacheSize)
         }
 
@@ -112,7 +116,12 @@ class DeveloperSettingsPresenter @Inject constructor(
                 DeveloperSettingsEvents.ClearCache -> coroutineScope.clearCache(clearCacheAction)
                 is DeveloperSettingsEvents.SetSimplifiedSlidingSyncEnabled -> coroutineScope.launch {
                     appPreferencesStore.setSimplifiedSlidingSyncEnabled(event.isEnabled)
-                    logoutUseCase.logout(ignoreSdkError = true)
+                    runCatching {
+                        logoutUseCase.logout(ignoreSdkError = true)
+                    }
+                }
+                is DeveloperSettingsEvents.SetHideImagesAndVideos -> coroutineScope.launch {
+                    appPreferencesStore.setHideImagesAndVideos(event.value)
                 }
             }
         }
@@ -128,6 +137,7 @@ class DeveloperSettingsPresenter @Inject constructor(
                 validator = ::customElementCallUrlValidator,
             ),
             isSimpleSlidingSyncEnabled = isSimplifiedSlidingSyncEnabled,
+            hideImagesAndVideos = hideImagesAndVideos,
             eventSink = ::handleEvents
         )
     }
@@ -171,7 +181,7 @@ class DeveloperSettingsPresenter @Inject constructor(
         }.runCatchingUpdatingState(cacheSize)
     }
 
-    private fun CoroutineScope.clearCache(clearCacheAction: MutableState<AsyncData<Unit>>) = launch {
+    private fun CoroutineScope.clearCache(clearCacheAction: MutableState<AsyncAction<Unit>>) = launch {
         suspend {
             clearCacheUseCase()
         }.runCatchingUpdatingState(clearCacheAction)

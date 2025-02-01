@@ -10,14 +10,12 @@ package extension
 import Versions
 import com.android.build.api.dsl.CommonExtension
 import isEnterpriseBuild
-import org.gradle.accessors.dm.LibrariesForLibs
-import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import java.io.File
 
 fun CommonExtension<*, *, *, *, *, *>.androidConfig(project: Project) {
     defaultConfig {
-        compileSdk = Versions.compileSdk
+        compileSdk = Versions.COMPILE_SDK
         minSdk = Versions.minSdk
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -28,8 +26,8 @@ fun CommonExtension<*, *, *, *, *, *>.androidConfig(project: Project) {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = Versions.javaVersion
+        targetCompatibility = Versions.javaVersion
     }
 
     testOptions {
@@ -45,19 +43,16 @@ fun CommonExtension<*, *, *, *, *, *>.androidConfig(project: Project) {
         }
         checkDependencies = false
         abortOnError = true
+        ignoreTestSources = true
         ignoreTestFixturesSources = true
         checkGeneratedSources = false
     }
 }
 
-fun CommonExtension<*, *, *, *, *, *>.composeConfig(libs: LibrariesForLibs) {
+fun CommonExtension<*, *, *, *, *, *>.composeConfig() {
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composecompiler.get()
     }
 
     packaging {

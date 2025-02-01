@@ -37,6 +37,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.TextMessageTy
 import io.element.android.libraries.matrix.api.timeline.item.event.VideoMessageType
 import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageType
 import io.element.android.libraries.matrix.ui.messages.toPlainText
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.push.impl.R
 import io.element.android.libraries.push.impl.notifications.model.FallbackNotifiableEvent
 import io.element.android.libraries.push.impl.notifications.model.InviteNotifiableEvent
@@ -45,6 +46,7 @@ import io.element.android.libraries.push.impl.notifications.model.ResolvedPushEv
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.toolbox.api.strings.StringProvider
 import io.element.android.services.toolbox.api.systemclock.SystemClock
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -69,6 +71,7 @@ class DefaultNotifiableEventResolver @Inject constructor(
     @ApplicationContext private val context: Context,
     private val permalinkParser: PermalinkParser,
     private val callNotificationEventResolver: CallNotificationEventResolver,
+    private val appPreferencesStore: AppPreferencesStore,
 ) : NotifiableEventResolver {
     override suspend fun resolveEvent(sessionId: SessionId, roomId: RoomId, eventId: EventId): ResolvedPushEvent? {
         // Restore session
@@ -103,7 +106,8 @@ class DefaultNotifiableEventResolver @Inject constructor(
                     timestamp = this.timestamp,
                     senderDisambiguatedDisplayName = senderDisambiguatedDisplayName,
                     body = messageBody,
-                    imageUriString = fetchImageIfPresent(client)?.toString(),
+                    imageUriString = content.fetchImageIfPresent(client)?.toString(),
+                    imageMimeType = content.getImageMimetype(),
                     roomName = roomDisplayName,
                     roomIsDm = isDm,
                     roomAvatarPath = roomAvatarUrl,
@@ -147,8 +151,7 @@ class DefaultNotifiableEventResolver @Inject constructor(
                     noisy = isNoisy,
                     timestamp = this.timestamp,
                     senderDisambiguatedDisplayName = getDisambiguatedDisplayName(content.senderId),
-                    body = stringProvider.getString(CommonStrings.common_call_invite),
-                    imageUriString = fetchImageIfPresent(client)?.toString(),
+                    body = stringProvider.getString(CommonStrings.common_unsupported_call),
                     roomName = roomDisplayName,
                     roomIsDm = isDm,
                     roomAvatarPath = roomAvatarUrl,
@@ -263,15 +266,15 @@ class DefaultNotifiableEventResolver @Inject constructor(
         senderDisambiguatedDisplayName: String,
     ): String {
         return when (val messageType = content.messageType) {
-            is AudioMessageType -> messageType.body
+            is AudioMessageType -> messageType.bestDescription
             is VoiceMessageType -> stringProvider.getString(CommonStrings.common_voice_message)
             is EmoteMessageType -> "* $senderDisambiguatedDisplayName ${messageType.body}"
-            is FileMessageType -> messageType.body
-            is ImageMessageType -> messageType.body
-            is StickerMessageType -> messageType.body
+            is FileMessageType -> messageType.bestDescription
+            is ImageMessageType -> messageType.bestDescription
+            is StickerMessageType -> messageType.bestDescription
             is NoticeMessageType -> messageType.body
             is TextMessageType -> messageType.toPlainText(permalinkParser = permalinkParser)
-            is VideoMessageType -> messageType.body
+            is VideoMessageType -> messageType.bestDescription
             is LocationMessageType -> messageType.body
             is OtherMessageType -> messageType.body
         }
@@ -288,22 +291,21 @@ class DefaultNotifiableEventResolver @Inject constructor(
         }
     }
 
-    private suspend fun NotificationData.fetchImageIfPresent(client: MatrixClient): Uri? {
-        val fileResult = when (val content = this.content) {
-            is NotificationContent.MessageLike.RoomMessage -> {
-                when (val messageType = content.messageType) {
-                    is ImageMessageType -> notificationMediaRepoFactory.create(client)
-                        .getMediaFile(
-                            mediaSource = messageType.source,
-                            mimeType = messageType.info?.mimetype,
-                            body = messageType.body,
-                        )
-                    is VideoMessageType -> null // Use the thumbnail here?
-                    else -> null
-                }
-            }
+    private suspend fun NotificationContent.MessageLike.RoomMessage.fetchImageIfPresent(client: MatrixClient): Uri? {
+        if (appPreferencesStore.doesHideImagesAndVideosFlow().first()) {
+            return null
+        }
+        val fileResult = when (val messageType = messageType) {
+            is ImageMessageType -> notificationMediaRepoFactory.create(client)
+                .getMediaFile(
+                    mediaSource = messageType.source,
+                    mimeType = messageType.info?.mimetype,
+                    filename = messageType.filename,
+                )
+            is VideoMessageType -> null // Use the thumbnail here?
             else -> null
-        } ?: return null
+        }
+            ?: return null
 
         return fileResult
             .onFailure {
@@ -314,6 +316,17 @@ class DefaultNotifiableEventResolver @Inject constructor(
                 FileProvider.getUriForFile(context, authority, mediaFile)
             }
             .getOrNull()
+    }
+
+    private suspend fun NotificationContent.MessageLike.RoomMessage.getImageMimetype(): String? {
+        if (appPreferencesStore.doesHideImagesAndVideosFlow().first()) {
+            return null
+        }
+        return when (val messageType = messageType) {
+            is ImageMessageType -> messageType.info?.mimetype
+            is VideoMessageType -> null // Use the thumbnail here?
+            else -> null
+        }
     }
 }
 
@@ -332,6 +345,7 @@ internal fun buildNotifiableMessageEvent(
     // We cannot use Uri? type here, as that could trigger a
     // NotSerializableException when persisting this to storage
     imageUriString: String? = null,
+    imageMimeType: String? = null,
     threadId: ThreadId? = null,
     roomName: String? = null,
     roomIsDm: Boolean = false,
@@ -357,6 +371,7 @@ internal fun buildNotifiableMessageEvent(
     senderDisambiguatedDisplayName = senderDisambiguatedDisplayName,
     body = body,
     imageUriString = imageUriString,
+    imageMimeType = imageMimeType,
     threadId = threadId,
     roomName = roomName,
     roomIsDm = roomIsDm,

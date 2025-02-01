@@ -15,10 +15,12 @@ import io.element.android.libraries.matrix.api.room.CurrentUserMembership
 import io.element.android.libraries.matrix.api.room.MatrixRoomInfo
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.impl.room.join.map
 import io.element.android.libraries.matrix.impl.room.member.RoomMemberMapper
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentMap
+import org.matrix.rustcomponents.sdk.Membership
 import org.matrix.rustcomponents.sdk.RoomHero
 import org.matrix.rustcomponents.sdk.Membership as RustMembership
 import org.matrix.rustcomponents.sdk.RoomInfo as RustRoomInfo
@@ -35,6 +37,7 @@ class MatrixRoomInfoMapper {
             avatarUrl = it.avatarUrl,
             isDirect = it.isDirect,
             isPublic = it.isPublic,
+            joinRule = it.joinRule?.map(),
             isSpace = it.isSpace,
             isTombstoned = it.isTombstoned,
             isFavorite = it.isFavourite,
@@ -53,6 +56,10 @@ class MatrixRoomInfoMapper {
             activeRoomCallParticipants = it.activeRoomCallParticipants.map(::UserId).toImmutableList(),
             heroes = it.elementHeroes().toImmutableList(),
             pinnedEventIds = it.pinnedEventIds.map(::EventId).toImmutableList(),
+            isMarkedUnread = it.isMarkedUnread,
+            numUnreadMessages = it.numUnreadMessages.toLong(),
+            numUnreadMentions = it.numUnreadMentions.toLong(),
+            numUnreadNotifications = it.numUnreadNotifications.toLong(),
         )
     }
 }
@@ -61,6 +68,8 @@ fun RustMembership.map(): CurrentUserMembership = when (this) {
     RustMembership.INVITED -> CurrentUserMembership.INVITED
     RustMembership.JOINED -> CurrentUserMembership.JOINED
     RustMembership.LEFT -> CurrentUserMembership.LEFT
+    Membership.KNOCKED -> CurrentUserMembership.KNOCKED
+    RustMembership.BANNED -> CurrentUserMembership.BANNED
 }
 
 fun RustRoomNotificationMode.map(): RoomNotificationMode = when (this) {

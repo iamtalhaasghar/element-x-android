@@ -14,11 +14,16 @@ import kotlin.time.Duration
 
 data class TimelineItemVoiceContent(
     val eventId: EventId?,
-    val body: String,
+    override val filename: String,
+    override val caption: String?,
+    override val formattedCaption: CharSequence?,
+    override val isEdited: Boolean,
     val duration: Duration,
-    val mediaSource: MediaSource,
-    val mimeType: String,
+    override val mediaSource: MediaSource,
+    override val formattedFileSize: String,
+    override val fileExtension: String,
+    override val mimeType: String,
     val waveform: ImmutableList<Float>,
-) : TimelineItemEventContent {
+) : TimelineItemEventContentWithAttachment {
     override val type: String = "TimelineItemAudioContent"
 }

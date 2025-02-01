@@ -23,10 +23,10 @@ import io.element.android.libraries.matrix.api.timeline.item.event.VideoMessageT
 import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageType
 import io.element.android.libraries.matrix.impl.media.map
 import io.element.android.libraries.matrix.impl.timeline.reply.InReplyToMapper
-import org.matrix.rustcomponents.sdk.Message
 import org.matrix.rustcomponents.sdk.MessageType
 import org.matrix.rustcomponents.sdk.use
 import org.matrix.rustcomponents.sdk.FormattedBody as RustFormattedBody
+import org.matrix.rustcomponents.sdk.MessageContent as Message
 import org.matrix.rustcomponents.sdk.MessageFormat as RustMessageFormat
 import org.matrix.rustcomponents.sdk.MessageType as RustMessageType
 
@@ -34,13 +34,13 @@ class EventMessageMapper {
     private val inReplyToMapper by lazy { InReplyToMapper(TimelineEventContentMapper()) }
 
     fun map(message: Message): MessageContent = message.use {
-        val type = it.msgtype().use(this::mapMessageType)
-        val inReplyToEvent: InReplyTo? = it.inReplyTo()?.use(inReplyToMapper::map)
+        val type = it.msgType.use(this::mapMessageType)
+        val inReplyToEvent: InReplyTo? = it.inReplyTo?.use(inReplyToMapper::map)
         MessageContent(
-            body = it.body(),
+            body = it.body,
             inReplyTo = inReplyToEvent,
-            isEdited = it.isEdited(),
-            isThreaded = it.isThreaded(),
+            isEdited = it.isEdited,
+            isThreaded = it.threadRoot != null,
             type = type
         )
     }
@@ -50,14 +50,18 @@ class EventMessageMapper {
             when (type.content.voice) {
                 null -> {
                     AudioMessageType(
-                        body = type.content.body,
+                        filename = type.content.filename,
+                        caption = type.content.caption,
+                        formattedCaption = type.content.formattedCaption?.map(),
                         source = type.content.source.map(),
                         info = type.content.info?.map(),
                     )
                 }
                 else -> {
                     VoiceMessageType(
-                        body = type.content.body,
+                        filename = type.content.filename,
+                        caption = type.content.caption,
+                        formattedCaption = type.content.formattedCaption?.map(),
                         source = type.content.source.map(),
                         info = type.content.info?.map(),
                         details = type.content.audio?.map(),
@@ -66,10 +70,22 @@ class EventMessageMapper {
             }
         }
         is RustMessageType.File -> {
-            FileMessageType(type.content.body, type.content.source.map(), type.content.info?.map())
+            FileMessageType(
+                filename = type.content.filename,
+                caption = type.content.caption,
+                formattedCaption = type.content.formattedCaption?.map(),
+                source = type.content.source.map(),
+                info = type.content.info?.map(),
+            )
         }
         is RustMessageType.Image -> {
-            ImageMessageType(type.content.body, type.content.formatted?.map(), type.content.filename, type.content.source.map(), type.content.info?.map())
+            ImageMessageType(
+                filename = type.content.filename,
+                caption = type.content.caption,
+                formattedCaption = type.content.formattedCaption?.map(),
+                source = type.content.source.map(),
+                info = type.content.info?.map(),
+            )
         }
         is RustMessageType.Notice -> {
             NoticeMessageType(type.content.body, type.content.formatted?.map())
@@ -81,7 +97,13 @@ class EventMessageMapper {
             EmoteMessageType(type.content.body, type.content.formatted?.map())
         }
         is RustMessageType.Video -> {
-            VideoMessageType(type.content.body, type.content.formatted?.map(), type.content.filename, type.content.source.map(), type.content.info?.map())
+            VideoMessageType(
+                filename = type.content.filename,
+                caption = type.content.caption,
+                formattedCaption = type.content.formattedCaption?.map(),
+                source = type.content.source.map(),
+                info = type.content.info?.map(),
+            )
         }
         is RustMessageType.Location -> {
             LocationMessageType(type.content.body, type.content.geoUri, type.content.description)

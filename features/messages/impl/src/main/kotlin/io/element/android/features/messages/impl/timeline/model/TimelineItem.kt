@@ -9,18 +9,25 @@ package io.element.android.features.messages.impl.timeline.model
 
 import androidx.compose.runtime.Immutable
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.virtual.TimelineItemVirtualModel
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.SendHandle
 import io.element.android.libraries.matrix.api.core.TransactionId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
+import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
+import io.element.android.libraries.matrix.api.timeline.item.event.MessageShieldProvider
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileTimelineDetails
+import io.element.android.libraries.matrix.api.timeline.item.event.SendHandleProvider
+import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemDebugInfoProvider
 import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemEventOrigin
 import io.element.android.libraries.matrix.api.timeline.item.event.getDisambiguatedDisplayName
 import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetails
@@ -64,6 +71,7 @@ sealed interface TimelineItem {
         val senderProfile: ProfileTimelineDetails,
         val senderAvatar: AvatarData,
         val content: TimelineItemEventContent,
+        val sentTimeMillis: Long = 0L,
         val sentTime: String = "",
         val isMine: Boolean = false,
         val isEditable: Boolean,
@@ -74,9 +82,10 @@ sealed interface TimelineItem {
         val localSendState: LocalEventSendState?,
         val inReplyTo: InReplyToDetails?,
         val isThreaded: Boolean,
-        val debugInfo: TimelineItemDebugInfo,
         val origin: TimelineItemEventOrigin?,
-        val messageShield: MessageShield?,
+        val timelineItemDebugInfoProvider: TimelineItemDebugInfoProvider,
+        val messageShieldProvider: MessageShieldProvider,
+        val sendHandleProvider: SendHandleProvider,
     ) : TimelineItem {
         val showSenderInformation = groupPosition.isNew() && !isMine
 
@@ -89,6 +98,28 @@ sealed interface TimelineItem {
         val isSticker: Boolean = content is TimelineItemStickerContent
 
         val isRemote = eventId != null
+
+        /** Whether a click on any part of the event bubble should trigger the 'onContentClick' callback.
+         *
+         *  This is `true` for all events except for visual media events with a caption or formatted caption.
+         */
+        val isWholeContentClickable = when (content) {
+            is TimelineItemStickerContent -> content.formattedCaption == null && content.caption == null
+            is TimelineItemImageContent -> content.formattedCaption == null && content.caption == null
+            is TimelineItemVideoContent -> content.formattedCaption == null && content.caption == null
+            else -> true
+        }
+
+        val eventOrTransactionId: EventOrTransactionId
+            get() = EventOrTransactionId.from(eventId = eventId, transactionId = transactionId)
+
+        // No need to be lazy here?
+        val messageShield: MessageShield? = messageShieldProvider(strict = false)
+
+        val debugInfo: TimelineItemDebugInfo
+            get() = timelineItemDebugInfoProvider()
+
+        val sendhandle: SendHandle? get() = sendHandleProvider()
     }
 
     @Immutable

@@ -42,7 +42,6 @@
   <string name="screen_recovery_key_confirm_key_placeholder">"Увесці…"</string>
   <string name="screen_recovery_key_confirm_lost_recovery_key">"Страцілі ключ аднаўлення?"</string>
   <string name="screen_recovery_key_confirm_success">"Ключ аднаўлення пацверджаны"</string>
-  <string name="screen_recovery_key_confirm_title">"Увядзіце ключ аднаўлення"</string>
   <string name="screen_recovery_key_copied_to_clipboard">"Ключ аднаўлення скапіраваны"</string>
   <string name="screen_recovery_key_generating_key">"Стварэнне…"</string>
   <string name="screen_recovery_key_save_action">"Захаваць ключ аднаўлення"</string>
@@ -60,7 +59,7 @@
   <string name="screen_reset_encryption_confirmation_alert_subtitle">"Гэты працэс незваротны."</string>
   <string name="screen_reset_encryption_confirmation_alert_title">"Вы ўпэўнены, што хочаце скінуць шыфраванне?"</string>
   <string name="screen_reset_encryption_password_error">"Адбылася невядомая памылка. Калі ласка, праверце правільнасць пароля вашага ўліковага запісу і паўтарыце спробу."</string>
-  <string name="screen_reset_encryption_password_placeholder">"Увод…"</string>
+  <string name="screen_reset_encryption_password_placeholder">"Увесці…"</string>
   <string name="screen_reset_encryption_password_subtitle">"Пацвердзіце, што вы хочаце скінуць шыфраванне"</string>
   <string name="screen_reset_encryption_password_title">"Каб працягнуць, увядзіце пароль уліковага запісу"</string>
 </resources>

@@ -27,11 +27,40 @@ fun TimelineItemEncryptedView(
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isMembershipUtd = (content.data as? UnableToDecryptContent.Data.MegolmV1AesSha2)?.utdCause == UtdCause.Membership
-    val (textId, iconId) = if (isMembershipUtd) {
-        CommonStrings.common_unable_to_decrypt_no_access to CompoundDrawables.ic_compound_block
-    } else {
-        CommonStrings.common_waiting_for_decryption_key to CompoundDrawables.ic_compound_time
+    val (textId, iconId) = when (content.data) {
+        is UnableToDecryptContent.Data.MegolmV1AesSha2 -> {
+            when (content.data.utdCause) {
+                UtdCause.SentBeforeWeJoined -> {
+                    CommonStrings.common_unable_to_decrypt_no_access to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.VerificationViolation -> {
+                    CommonStrings.common_unable_to_decrypt_verification_violation to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.UnsignedDevice,
+                UtdCause.UnknownDevice -> {
+                    CommonStrings.common_unable_to_decrypt_insecure_device to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.HistoricalMessageAndBackupIsDisabled -> {
+                    CommonStrings.timeline_decryption_failure_historical_event_no_key_backup to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.HistoricalMessageAndDeviceIsUnverified -> {
+                    CommonStrings.timeline_decryption_failure_historical_event_unverified_device to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.WithheldUnverifiedOrInsecureDevice -> {
+                    CommonStrings.timeline_decryption_failure_withheld_unverified to CompoundDrawables.ic_compound_block
+                }
+                UtdCause.WithheldBySender -> {
+                    CommonStrings.timeline_decryption_failure_unable_to_decrypt to CompoundDrawables.ic_compound_error
+                }
+                else -> {
+                    CommonStrings.common_waiting_for_decryption_key to CompoundDrawables.ic_compound_time
+                }
+            }
+        }
+        else -> {
+            // Should not happen, we only supports megolm in rooms
+            CommonStrings.common_waiting_for_decryption_key to CompoundDrawables.ic_compound_time
+        }
     }
     TimelineItemInformativeView(
         text = stringResource(id = textId),

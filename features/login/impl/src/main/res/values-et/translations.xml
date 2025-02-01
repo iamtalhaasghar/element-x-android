@@ -60,6 +60,7 @@ Proovi käsitsi sisselogimist või skaneeri QR-koodi mõne muu seadmega."</strin
   <string name="screen_qr_code_login_initial_state_item_3">"Vali %1$s"</string>
   <string name="screen_qr_code_login_initial_state_item_3_action">"„Seo uus seade“"</string>
   <string name="screen_qr_code_login_initial_state_item_4">"Skaneeri QR-koodi selle seadmega"</string>
+  <string name="screen_qr_code_login_initial_state_subtitle">"See funktsionaalsus on sadaval vaid siis, kui sinu teenusepakkuja seda toetab."</string>
   <string name="screen_qr_code_login_initial_state_title">"QR-koodi saamiseks ava %1$s oma teises seadmes"</string>
   <string name="screen_qr_code_login_invalid_scan_state_description">"Kasuta teises seadmes näidatavat QR-koodi"</string>
   <string name="screen_qr_code_login_invalid_scan_state_retry_button">"Proovi uuesti"</string>
@@ -73,7 +74,7 @@ Proovi käsitsi sisselogimist või skaneeri QR-koodi mõne muu seadmega."</strin
   <string name="screen_qr_code_login_verify_code_loading">"Ootame sinu teise seadme järgi"</string>
   <string name="screen_qr_code_login_verify_code_subtitle">"Sinu teenusepakkuja võib sisselogimisel eeldada selle verifitseerimiskoodi kasutamist."</string>
   <string name="screen_qr_code_login_verify_code_title">"Sinu verifitseerimiskood"</string>
-  <string name="screen_server_confirmation_change_server">"Muuda teenusepakujat"</string>
+  <string name="screen_server_confirmation_change_server">"Muuda teenusepakkujat"</string>
   <string name="screen_server_confirmation_message_login_element_dot_io">"Privaatne server Elemendi töötajate jaoks."</string>
   <string name="screen_server_confirmation_message_login_matrix_dot_org">"Matrix on avatud võrk turvalise ja hajutatud suhtluse jaoks."</string>
   <string name="screen_server_confirmation_message_register">"See on koht, kus sinu vestlused elavad – just nagu kasutaksid oma e-kirjade säilitamiseks e-postiteenuse pakkujat."</string>

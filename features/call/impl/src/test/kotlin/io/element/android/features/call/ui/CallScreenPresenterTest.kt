@@ -71,7 +71,9 @@ class CallScreenPresenterTest {
             skipItems(1)
             val initialState = awaitItem()
             assertThat(initialState.urlState).isEqualTo(AsyncData.Success("https://call.element.io"))
+            assertThat(initialState.webViewError).isNull()
             assertThat(initialState.isInWidgetMode).isFalse()
+            assertThat(initialState.isCallActive).isFalse()
             analyticsLambda.assertions().isNeverCalled()
             joinedCallLambda.assertions().isCalledOnce()
         }
@@ -105,15 +107,11 @@ class CallScreenPresenterTest {
             joinedCallLambda.assertions().isCalledOnce()
             val initialState = awaitItem()
             assertThat(initialState.urlState).isInstanceOf(AsyncData.Success::class.java)
+            assertThat(initialState.isCallActive).isFalse()
             assertThat(initialState.isInWidgetMode).isTrue()
             assertThat(widgetProvider.getWidgetCalled).isTrue()
             assertThat(widgetDriver.runCalledCount).isEqualTo(1)
-            // Called several times because of the recomposition
-            analyticsLambda.assertions().isCalledExactly(2)
-                .withSequence(
-                    listOf(value(MobileScreen.ScreenName.RoomCall)),
-                    listOf(value(MobileScreen.ScreenName.RoomCall))
-                )
+            analyticsLambda.assertions().isCalledOnce().with(value(MobileScreen.ScreenName.RoomCall))
             sendCallNotificationIfNeededLambda.assertions().isCalledOnce()
         }
     }
@@ -208,6 +206,44 @@ class CallScreenPresenterTest {
     }
 
     @Test
+    fun `present - a received room member message makes the call to be active`() = runTest {
+        val navigator = FakeCallScreenNavigator()
+        val widgetDriver = FakeMatrixWidgetDriver()
+        val presenter = createCallScreenPresenter(
+            callType = CallType.RoomCall(A_SESSION_ID, A_ROOM_ID),
+            widgetDriver = widgetDriver,
+            navigator = navigator,
+            dispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true),
+            screenTracker = FakeScreenTracker {},
+        )
+        val messageInterceptor = FakeWidgetMessageInterceptor()
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            skipItems(1)
+            val initialState = awaitItem()
+            assertThat(initialState.isCallActive).isFalse()
+            initialState.eventSink(CallScreenEvents.SetupMessageChannels(messageInterceptor))
+            messageInterceptor.givenInterceptedMessage(
+                """
+                    {
+                        "action":"send_event",
+                        "api":"fromWidget",
+                        "widgetId":"1",
+                        "requestId":"1",
+                        "data":{
+                            "type":"org.matrix.msc3401.call.member"
+                        }
+                    }
+                """.trimIndent()
+            )
+            skipItems(1)
+            val finalState = awaitItem()
+            assertThat(finalState.isCallActive).isTrue()
+        }
+    }
+
+    @Test
     fun `present - automatically starts the Matrix client sync when on RoomCall`() = runTest {
         val navigator = FakeCallScreenNavigator()
         val widgetDriver = FakeMatrixWidgetDriver()
@@ -268,6 +304,48 @@ class CallScreenPresenterTest {
         job.cancelAndJoin()
 
         assert(stopSyncLambda).isCalledOnce()
+    }
+
+    @Test
+    fun `present - error from WebView are updating the state`() = runTest {
+        val presenter = createCallScreenPresenter(
+            callType = CallType.ExternalUrl("https://call.element.io"),
+            activeCallManager = FakeActiveCallManager(),
+        )
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            // Wait until the URL is loaded
+            skipItems(1)
+            val initialState = awaitItem()
+            initialState.eventSink(CallScreenEvents.OnWebViewError("A Webview error"))
+            val finalState = awaitItem()
+            assertThat(finalState.webViewError).isEqualTo("A Webview error")
+        }
+    }
+
+    @Test
+    fun `present - error from WebView are ignored if Element Call is loaded`() = runTest {
+        val presenter = createCallScreenPresenter(
+            callType = CallType.ExternalUrl("https://call.element.io"),
+            activeCallManager = FakeActiveCallManager(),
+        )
+        moleculeFlow(RecompositionMode.Immediate) {
+            presenter.present()
+        }.test {
+            // Wait until the URL is loaded
+            skipItems(1)
+            val initialState = awaitItem()
+
+            val messageInterceptor = FakeWidgetMessageInterceptor()
+            initialState.eventSink(CallScreenEvents.SetupMessageChannels(messageInterceptor))
+            // Emit a message
+            messageInterceptor.givenInterceptedMessage("A message")
+            // WebView emits an error, but it will be ignored
+            initialState.eventSink(CallScreenEvents.OnWebViewError("A Webview error"))
+            val finalState = awaitItem()
+            assertThat(finalState.webViewError).isNull()
+        }
     }
 
     private fun TestScope.createCallScreenPresenter(

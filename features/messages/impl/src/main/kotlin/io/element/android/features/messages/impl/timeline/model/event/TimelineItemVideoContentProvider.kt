@@ -17,22 +17,29 @@ open class TimelineItemVideoContentProvider : PreviewParameterProvider<TimelineI
     override val values: Sequence<TimelineItemVideoContent>
         get() = sequenceOf(
             aTimelineItemVideoContent(),
-            aTimelineItemVideoContent().copy(aspectRatio = 1.0f),
-            aTimelineItemVideoContent().copy(aspectRatio = 1.5f),
+            aTimelineItemVideoContent(aspectRatio = 1.0f),
+            aTimelineItemVideoContent(aspectRatio = 1.5f),
+            aTimelineItemVideoContent(blurhash = null),
         )
 }
 
-fun aTimelineItemVideoContent() = TimelineItemVideoContent(
-    body = "Video.mp4",
-    formatted = null,
-    filename = null,
+fun aTimelineItemVideoContent(
+    aspectRatio: Float = 0.5f,
+    blurhash: String? = A_BLUR_HASH,
+) = TimelineItemVideoContent(
+    filename = "Video.mp4",
+    caption = null,
+    formattedCaption = null,
+    isEdited = false,
     thumbnailSource = null,
-    blurHash = A_BLUR_HASH,
-    aspectRatio = 0.5f,
+    blurHash = blurhash,
+    aspectRatio = aspectRatio,
     duration = 100.milliseconds,
-    videoSource = MediaSource(""),
-    height = 300,
+    mediaSource = MediaSource(""),
     width = 150,
+    height = 300,
+    thumbnailWidth = 150,
+    thumbnailHeight = 300,
     mimeType = MimeTypes.Mp4,
     formattedFileSize = "14MB",
     fileExtension = "mp4"

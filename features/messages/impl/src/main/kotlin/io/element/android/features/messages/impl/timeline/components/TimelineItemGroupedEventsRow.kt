@@ -25,6 +25,9 @@ import io.element.android.features.messages.impl.timeline.components.layout.Cont
 import io.element.android.features.messages.impl.timeline.components.receipt.ReadReceiptViewState
 import io.element.android.features.messages.impl.timeline.components.receipt.TimelineItemReadReceiptView
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
+import io.element.android.features.messages.impl.timeline.protection.aTimelineProtectionState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.matrix.api.core.EventId
@@ -34,6 +37,7 @@ import io.element.android.libraries.matrix.api.core.UserId
 fun TimelineItemGroupedEventsRow(
     timelineItem: TimelineItem.GroupedEvents,
     timelineRoomInfo: TimelineRoomInfo,
+    timelineProtectionState: TimelineProtectionState,
     renderReadReceipts: Boolean,
     isLastOutgoingMessage: Boolean,
     focusedEventId: EventId?,
@@ -52,9 +56,13 @@ fun TimelineItemGroupedEventsRow(
         { event, contentModifier, onContentLayoutChange ->
             TimelineItemEventContentView(
                 content = event.content,
+                hideMediaContent = timelineProtectionState.hideMediaContent(event.eventId),
+                onShowContentClick = { timelineProtectionState.eventSink(TimelineProtectionEvent.ShowContent(event.eventId)) },
                 onLinkClick = onLinkClick,
                 eventSink = eventSink,
                 modifier = contentModifier,
+                onContentClick = null,
+                onLongClick = null,
                 onContentLayoutChange = onContentLayoutChange
             )
         },
@@ -70,6 +78,7 @@ fun TimelineItemGroupedEventsRow(
         onExpandGroupClick = ::onExpandGroupClick,
         timelineItem = timelineItem,
         timelineRoomInfo = timelineRoomInfo,
+        timelineProtectionState = timelineProtectionState,
         focusedEventId = focusedEventId,
         renderReadReceipts = renderReadReceipts,
         isLastOutgoingMessage = isLastOutgoingMessage,
@@ -94,6 +103,7 @@ private fun TimelineItemGroupedEventsRowContent(
     onExpandGroupClick: () -> Unit,
     timelineItem: TimelineItem.GroupedEvents,
     timelineRoomInfo: TimelineRoomInfo,
+    timelineProtectionState: TimelineProtectionState,
     focusedEventId: EventId?,
     renderReadReceipts: Boolean,
     isLastOutgoingMessage: Boolean,
@@ -112,9 +122,13 @@ private fun TimelineItemGroupedEventsRowContent(
         { event, contentModifier, onContentLayoutChange ->
             TimelineItemEventContentView(
                 content = event.content,
+                hideMediaContent = timelineProtectionState.hideMediaContent(event.eventId),
+                onShowContentClick = { timelineProtectionState.eventSink(TimelineProtectionEvent.ShowContent(event.eventId)) },
                 onLinkClick = onLinkClick,
                 eventSink = eventSink,
                 modifier = contentModifier,
+                onContentClick = null,
+                onLongClick = null,
                 onContentLayoutChange = onContentLayoutChange
             )
         },
@@ -136,12 +150,13 @@ private fun TimelineItemGroupedEventsRowContent(
                     TimelineItemRow(
                         timelineItem = subGroupEvent,
                         timelineRoomInfo = timelineRoomInfo,
+                        timelineProtectionState = timelineProtectionState,
                         renderReadReceipts = renderReadReceipts,
                         isLastOutgoingMessage = isLastOutgoingMessage,
                         focusedEventId = focusedEventId,
                         onUserDataClick = onUserDataClick,
                         onLinkClick = onLinkClick,
-                        onClick = onClick,
+                        onContentClick = onClick,
                         onLongClick = onLongClick,
                         inReplyToClick = inReplyToClick,
                         onReactionClick = onReactionClick,
@@ -178,6 +193,7 @@ internal fun TimelineItemGroupedEventsRowContentExpandedPreview() = ElementPrevi
         onExpandGroupClick = {},
         timelineItem = events,
         timelineRoomInfo = aTimelineRoomInfo(),
+        timelineProtectionState = aTimelineProtectionState(),
         focusedEventId = events.events.first().eventId,
         renderReadReceipts = true,
         isLastOutgoingMessage = false,
@@ -202,6 +218,7 @@ internal fun TimelineItemGroupedEventsRowContentCollapsePreview() = ElementPrevi
         onExpandGroupClick = {},
         timelineItem = aGroupedEvents(withReadReceipts = true),
         timelineRoomInfo = aTimelineRoomInfo(),
+        timelineProtectionState = aTimelineProtectionState(),
         focusedEventId = null,
         renderReadReceipts = true,
         isLastOutgoingMessage = false,

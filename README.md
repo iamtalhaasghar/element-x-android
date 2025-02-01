@@ -8,7 +8,7 @@
 
 # Element X Android
 
-Element X Android is a [Matrix](https://matrix.org/) Android Client provided by [element.io](https://element.io/). This app is currently in a pre-alpha release stage with only basic functionalities.
+Element X Android is a [Matrix](https://matrix.org/) Android Client provided by [element.io](https://element.io/).
 
 The application is a total rewrite of [Element-Android](https://github.com/element-hq/element-android) using the [Matrix Rust SDK](https://github.com/matrix-org/matrix-rust-sdk) underneath and targeting devices running Android 7+. The UI layer is written using [Jetpack Compose](https://developer.android.com/jetpack/compose), and the navigation is managed using [Appyx](https://github.com/bumble-tech/appyx).
 
@@ -59,7 +59,7 @@ Element X Android supports many languages. You can help us to translate the app 
 
 Note that for now, we keep control on the French and German translations.
 
-Translations can be checked screen per screen using our tool Element X Android Gallery, available at https://element-hq.github.io/element-x-android/. Note that this page is updated every Tuesday. 
+Translations can be checked screen per screen using our tool Element X Android Gallery, available at https://element-hq.github.io/element-x-android/. Note that this page is updated every Tuesday.
 
 More instructions about translating the application can be found at [CONTRIBUTING.md](CONTRIBUTING.md#strings).
 
@@ -71,7 +71,7 @@ We're doing this as a way to share code between platforms and while we've seen p
 
 ## Status
 
-This project is in work in progress. The app does not cover yet all functionalities we expect. The list of supported features can be found in [this issue](https://github.com/element-hq/element-x-android/issues/911).
+This project is in an early rollout and migration phase.
 
 ## Contributing
 
@@ -83,8 +83,11 @@ You can also come chat with the community in the Matrix [room](https://matrix.to
 
 ## Build instructions
 
-Just clone the project and open it in Android Studio.
-Makes sure to select the `app` configuration when building (as we also have sample apps in the project).
+Just clone the project and open it in Android Studio. Make sure to select the
+`app` configuration when building (as we also have sample apps in the project).
+
+To build against a local copy of the Rust SDK, see the [Developer
+onboarding](docs/_developer_onboarding.md#build-the-sdk-locally) instructions.
 
 ## Support
 

@@ -8,6 +8,7 @@
 package io.element.android.libraries.matrix.api.timeline.item.event
 
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.SendHandle
 import io.element.android.libraries.matrix.api.core.TransactionId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.timeline.item.TimelineItemDebugInfo
@@ -18,7 +19,6 @@ data class EventTimelineItem(
     val transactionId: TransactionId?,
     val isEditable: Boolean,
     val canBeRepliedTo: Boolean,
-    val isLocal: Boolean,
     val isOwn: Boolean,
     val isRemote: Boolean,
     val localSendState: LocalEventSendState?,
@@ -28,9 +28,10 @@ data class EventTimelineItem(
     val senderProfile: ProfileTimelineDetails,
     val timestamp: Long,
     val content: EventContent,
-    val debugInfo: TimelineItemDebugInfo,
     val origin: TimelineItemEventOrigin?,
-    val messageShield: MessageShield?,
+    val timelineItemDebugInfoProvider: TimelineItemDebugInfoProvider,
+    val messageShieldProvider: MessageShieldProvider,
+    val sendHandleProvider: SendHandleProvider,
 ) {
     fun inReplyTo(): InReplyTo? {
         return (content as? MessageContent)?.inReplyTo
@@ -44,4 +45,16 @@ data class EventTimelineItem(
         val details = inReplyTo()
         return details is InReplyTo.NotLoaded
     }
+}
+
+fun interface TimelineItemDebugInfoProvider {
+    operator fun invoke(): TimelineItemDebugInfo
+}
+
+fun interface MessageShieldProvider {
+    operator fun invoke(strict: Boolean): MessageShield?
+}
+
+fun interface SendHandleProvider {
+    operator fun invoke(): SendHandle?
 }
