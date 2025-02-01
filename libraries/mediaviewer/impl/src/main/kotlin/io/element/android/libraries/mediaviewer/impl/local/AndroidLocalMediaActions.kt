@@ -35,7 +35,6 @@ import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.di.AppScope
 import io.element.android.libraries.di.ApplicationContext
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
-import io.element.android.libraries.mediaviewer.api.local.LocalMediaActions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -157,7 +156,7 @@ class AndroidLocalMediaActions @Inject constructor(
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveOnDiskUsingMediaStore(localMedia: LocalMedia) {
         val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, localMedia.info.name)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, localMedia.info.filename)
             put(MediaStore.MediaColumns.MIME_TYPE, localMedia.info.mimeType)
             put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
         }
@@ -175,7 +174,7 @@ class AndroidLocalMediaActions @Inject constructor(
     private fun saveOnDiskUsingExternalStorageApi(localMedia: LocalMedia) {
         val target = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            localMedia.info.name
+            localMedia.info.filename
         )
         localMedia.openStream()?.use { input ->
             FileOutputStream(target).use { output ->

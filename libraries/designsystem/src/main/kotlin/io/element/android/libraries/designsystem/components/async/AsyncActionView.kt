@@ -28,12 +28,13 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
  * closed, [onErrorDismiss] will be invoked. If [onRetry] is not null, a retry button will be displayed.
  * - When loading, display a loading dialog using [progressDialog]. Pass empty lambda to disable.
  */
+@Suppress("ContentSlotReused") // False positive, the lambdas don't add composable views
 @Composable
 fun <T> AsyncActionView(
     async: AsyncAction<T>,
     onSuccess: (T) -> Unit,
     onErrorDismiss: () -> Unit,
-    confirmationDialog: @Composable () -> Unit = { },
+    confirmationDialog: @Composable (AsyncAction.Confirming) -> Unit = { },
     progressDialog: @Composable () -> Unit = { AsyncActionViewDefaults.ProgressDialog() },
     errorTitle: @Composable (Throwable) -> String = { ErrorDialogDefaults.title },
     errorMessage: @Composable (Throwable) -> String = { it.message ?: it.toString() },
@@ -41,7 +42,7 @@ fun <T> AsyncActionView(
 ) {
     when (async) {
         AsyncAction.Uninitialized -> Unit
-        AsyncAction.Confirming -> confirmationDialog()
+        is AsyncAction.Confirming -> confirmationDialog(async)
         is AsyncAction.Loading -> progressDialog()
         is AsyncAction.Failure -> {
             if (onRetry == null) {

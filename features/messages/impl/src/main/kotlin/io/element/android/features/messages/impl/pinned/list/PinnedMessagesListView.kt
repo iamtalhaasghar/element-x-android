@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.actionlist.ActionListEvents
 import io.element.android.features.messages.impl.actionlist.ActionListView
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
@@ -32,11 +33,13 @@ import io.element.android.features.messages.impl.timeline.components.event.Timel
 import io.element.android.features.messages.impl.timeline.components.layout.ContentAvoidingLayoutData
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.poll.api.pollcontent.PollTitleView
 import io.element.android.libraries.designsystem.atomic.molecules.IconTitleSubtitleMolecule
+import io.element.android.libraries.designsystem.components.BigIcon
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
-import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
@@ -77,8 +80,8 @@ fun PinnedMessagesListView(
                 onLinkClick = onLinkClick,
                 onErrorDismiss = onBackClick,
                 modifier = Modifier
-                        .padding(padding)
-                        .consumeWindowInsets(padding),
+                    .padding(padding)
+                    .consumeWindowInsets(padding),
             )
         }
     )
@@ -152,7 +155,7 @@ private fun PinnedMessagesListEmpty(
         IconTitleSubtitleMolecule(
             title = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_headline),
             subTitle = stringResource(id = CommonStrings.screen_pinned_timeline_empty_state_description, pinActionText),
-            iconResourceId = CompoundDrawables.ic_compound_pin,
+            iconStyle = BigIcon.Style.Default(CompoundIcons.Pin()),
         )
     }
 }
@@ -208,11 +211,12 @@ private fun PinnedMessagesListLoaded(
                 timelineItem = timelineItem,
                 timelineRoomInfo = state.timelineRoomInfo,
                 renderReadReceipts = false,
+                timelineProtectionState = state.timelineProtectionState,
                 isLastOutgoingMessage = false,
                 focusedEventId = null,
                 onUserDataClick = onUserDataClick,
                 onLinkClick = onLinkClick,
-                onClick = onEventClick,
+                onContentClick = onEventClick,
                 onLongClick = ::onMessageLongClick,
                 inReplyToClick = {},
                 onReactionClick = { _, _ -> },
@@ -225,6 +229,9 @@ private fun PinnedMessagesListLoaded(
                 eventContentView = { event, contentModifier, onContentLayoutChange ->
                     TimelineItemEventContentViewWrapper(
                         event = event,
+                        timelineProtectionState = state.timelineProtectionState,
+                        onContentClick = { onEventClick(event) },
+                        onLongClick = { onMessageLongClick(event) },
                         onLinkClick = onLinkClick,
                         modifier = contentModifier,
                         onContentLayoutChange = onContentLayoutChange
@@ -238,9 +245,12 @@ private fun PinnedMessagesListLoaded(
 @Composable
 private fun TimelineItemEventContentViewWrapper(
     event: TimelineItem.Event,
+    timelineProtectionState: TimelineProtectionState,
+    onContentClick: () -> Unit,
     onLinkClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)?,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (event.content is TimelineItemPollContent) {
         PollTitleView(
@@ -251,9 +261,13 @@ private fun TimelineItemEventContentViewWrapper(
     } else {
         TimelineItemEventContentView(
             content = event.content,
+            hideMediaContent = timelineProtectionState.hideMediaContent(event.eventId),
+            onShowContentClick = { timelineProtectionState.eventSink(TimelineProtectionEvent.ShowContent(event.eventId)) },
             onLinkClick = onLinkClick,
             eventSink = { },
             modifier = modifier,
+            onContentClick = onContentClick,
+            onLongClick = onLongClick,
             onContentLayoutChange = onContentLayoutChange
         )
     }

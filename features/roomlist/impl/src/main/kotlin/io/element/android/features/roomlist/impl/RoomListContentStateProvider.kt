@@ -10,6 +10,7 @@ package io.element.android.features.roomlist.impl
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import io.element.android.features.roomlist.impl.model.RoomListRoomSummary
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
+import io.element.android.libraries.fullscreenintent.api.aFullScreenIntentPermissionsState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -20,6 +21,7 @@ open class RoomListContentStateProvider : PreviewParameterProvider<RoomListConte
             aRoomsContentState(summaries = persistentListOf()),
             aSkeletonContentState(),
             anEmptyContentState(),
+            anEmptyContentState(securityBannerState = SecurityBannerState.SetUpRecovery),
             aRoomsContentState(securityBannerState = SecurityBannerState.NeedsNativeSlidingSyncMigration),
         )
 }
@@ -36,16 +38,8 @@ internal fun aRoomsContentState(
 
 internal fun aSkeletonContentState() = RoomListContentState.Skeleton(16)
 
-internal fun anEmptyContentState() = RoomListContentState.Empty
-
-internal fun aFullScreenIntentPermissionsState(
-    permissionGranted: Boolean = true,
-    shouldDisplay: Boolean = false,
-    openFullScreenIntentSettings: () -> Unit = {},
-    dismissFullScreenIntentBanner: () -> Unit = {},
-) = FullScreenIntentPermissionsState(
-    permissionGranted = permissionGranted,
-    shouldDisplayBanner = shouldDisplay,
-    openFullScreenIntentSettings = openFullScreenIntentSettings,
-    dismissFullScreenIntentBanner = dismissFullScreenIntentBanner,
+internal fun anEmptyContentState(
+    securityBannerState: SecurityBannerState = SecurityBannerState.None,
+) = RoomListContentState.Empty(
+    securityBannerState = securityBannerState,
 )

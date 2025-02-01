@@ -8,26 +8,27 @@
 package io.element.android.features.messages.impl.timeline.model.event
 
 import io.element.android.libraries.matrix.api.media.MediaSource
-import io.element.android.libraries.matrix.api.timeline.item.event.FormattedBody
 import kotlin.time.Duration
 
 data class TimelineItemVideoContent(
-    val body: String,
-    val formatted: FormattedBody?,
-    val filename: String?,
+    override val filename: String,
+    override val caption: String?,
+    override val formattedCaption: CharSequence?,
+    override val isEdited: Boolean,
     val duration: Duration,
-    val videoSource: MediaSource,
+    override val mediaSource: MediaSource,
     val thumbnailSource: MediaSource?,
     val aspectRatio: Float?,
     val blurHash: String?,
     val height: Int?,
     val width: Int?,
-    val mimeType: String,
-    val formattedFileSize: String,
-    val fileExtension: String,
-) : TimelineItemEventContent {
+    val thumbnailWidth: Int?,
+    val thumbnailHeight: Int?,
+    override val mimeType: String,
+    override val formattedFileSize: String,
+    override val fileExtension: String,
+) : TimelineItemEventContentWithAttachment {
     override val type: String = "TimelineItemImageContent"
 
-    val showCaption = filename != null && filename != body
-    val caption = if (showCaption) body else ""
+    val showCaption = caption != null
 }

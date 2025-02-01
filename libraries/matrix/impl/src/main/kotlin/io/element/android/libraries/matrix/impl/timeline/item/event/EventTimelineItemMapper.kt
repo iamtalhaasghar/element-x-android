@@ -20,10 +20,12 @@ import io.element.android.libraries.matrix.api.timeline.item.event.ProfileTimeli
 import io.element.android.libraries.matrix.api.timeline.item.event.ReactionSender
 import io.element.android.libraries.matrix.api.timeline.item.event.Receipt
 import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemEventOrigin
+import io.element.android.libraries.matrix.impl.core.RustSendHandle
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import org.matrix.rustcomponents.sdk.EventSendState
+import org.matrix.rustcomponents.sdk.EventOrTransactionId
+import org.matrix.rustcomponents.sdk.QueueWedgeError
 import org.matrix.rustcomponents.sdk.Reaction
 import org.matrix.rustcomponents.sdk.ShieldState
 import uniffi.matrix_sdk_common.ShieldStateCode
@@ -37,25 +39,25 @@ import uniffi.matrix_sdk_ui.EventItemOrigin as RustEventItemOrigin
 class EventTimelineItemMapper(
     private val contentMapper: TimelineEventContentMapper = TimelineEventContentMapper(),
 ) {
-    fun map(eventTimelineItem: RustEventTimelineItem): EventTimelineItem = eventTimelineItem.use {
+    fun map(eventTimelineItem: RustEventTimelineItem): EventTimelineItem = eventTimelineItem.run {
         EventTimelineItem(
-            eventId = it.eventId()?.let(::EventId),
-            transactionId = it.transactionId()?.let(::TransactionId),
-            isEditable = it.isEditable(),
-            canBeRepliedTo = it.canBeRepliedTo(),
-            isLocal = it.isLocal(),
-            isOwn = it.isOwn(),
-            isRemote = it.isRemote(),
-            localSendState = it.localSendState()?.map(),
-            reactions = it.reactions().map(),
-            receipts = it.readReceipts().map(),
-            sender = UserId(it.sender()),
-            senderProfile = it.senderProfile().map(),
-            timestamp = it.timestamp().toLong(),
-            content = contentMapper.map(it.content()),
-            debugInfo = it.debugInfo().map(),
-            origin = it.origin()?.map(),
-            messageShield = it.getShield(false)?.map(),
+            eventId = eventOrTransactionId.eventId(),
+            transactionId = eventOrTransactionId.transactionId(),
+            isEditable = isEditable,
+            canBeRepliedTo = canBeRepliedTo,
+            isOwn = isOwn,
+            isRemote = isRemote,
+            localSendState = localSendState?.map(),
+            reactions = reactions.map(),
+            receipts = readReceipts.map(),
+            sender = UserId(sender),
+            senderProfile = senderProfile.map(),
+            timestamp = timestamp.toLong(),
+            content = contentMapper.map(content),
+            origin = origin?.map(),
+            timelineItemDebugInfoProvider = { lazyProvider.debugInfo().map() },
+            messageShieldProvider = { strict -> lazyProvider.getShields(strict)?.map() },
+            sendHandleProvider = { lazyProvider.getSendHandle()?.let(::RustSendHandle) }
         )
     }
 }
@@ -78,25 +80,37 @@ fun RustEventSendState?.map(): LocalEventSendState? {
         null -> null
         RustEventSendState.NotSentYet -> LocalEventSendState.Sending
         is RustEventSendState.SendingFailed -> {
-            if (isRecoverable) {
-                LocalEventSendState.Sending
-            } else {
-                LocalEventSendState.Failed.Unknown(error)
+            when (val queueWedgeError = error) {
+                QueueWedgeError.CrossVerificationRequired -> {
+                    // The current device is not cross-signed (or cross signing is not setup)
+                    LocalEventSendState.Failed.SendingFromUnverifiedDevice
+                }
+                is QueueWedgeError.IdentityViolations -> {
+                    LocalEventSendState.Failed.VerifiedUserChangedIdentity(queueWedgeError.users.map { UserId(it) })
+                }
+                is QueueWedgeError.InsecureDevices -> {
+                    LocalEventSendState.Failed.VerifiedUserHasUnsignedDevice(
+                        devices = queueWedgeError.userDeviceMap.entries.associate { entry ->
+                            UserId(entry.key) to entry.value.map { DeviceId(it) }
+                        }
+                    )
+                }
+                is QueueWedgeError.GenericApiError -> {
+                    if (isRecoverable) {
+                        LocalEventSendState.Sending
+                    } else {
+                        LocalEventSendState.Failed.Unknown(queueWedgeError.msg)
+                    }
+                }
+                is QueueWedgeError.InvalidMimeType -> {
+                    LocalEventSendState.Failed.InvalidMimeType(queueWedgeError.mimeType)
+                }
+                is QueueWedgeError.MissingMediaContent -> {
+                    LocalEventSendState.Failed.MissingMediaContent
+                }
             }
         }
         is RustEventSendState.Sent -> LocalEventSendState.Sent(EventId(eventId))
-        is RustEventSendState.VerifiedUserChangedIdentity -> {
-            LocalEventSendState.Failed.VerifiedUserChangedIdentity(users.map { UserId(it) })
-        }
-        is RustEventSendState.VerifiedUserHasUnsignedDevice -> {
-            LocalEventSendState.Failed.VerifiedUserHasUnsignedDevice(
-                devices = devices.entries.associate { entry ->
-                    UserId(entry.key) to entry.value.map { DeviceId(it) }
-                }
-            )
-        }
-        EventSendState.CrossSigningNotSetup -> LocalEventSendState.Failed.CrossSigningNotSetup
-        EventSendState.SendingFromUnverifiedDevice -> LocalEventSendState.Failed.SendingFromUnverifiedDevice
     }
 }
 
@@ -159,6 +173,14 @@ private fun ShieldState?.map(): MessageShield? {
         ShieldStateCode.UNSIGNED_DEVICE -> MessageShield.UnsignedDevice(isCritical)
         ShieldStateCode.UNVERIFIED_IDENTITY -> MessageShield.UnverifiedIdentity(isCritical)
         ShieldStateCode.SENT_IN_CLEAR -> MessageShield.SentInClear(isCritical)
-        ShieldStateCode.PREVIOUSLY_VERIFIED -> MessageShield.PreviouslyVerified(isCritical)
+        ShieldStateCode.VERIFICATION_VIOLATION -> MessageShield.VerificationViolation(isCritical)
     }
+}
+
+private fun EventOrTransactionId.eventId(): EventId? {
+    return (this as? EventOrTransactionId.EventId)?.let { EventId(it.eventId) }
+}
+
+private fun EventOrTransactionId.transactionId(): TransactionId? {
+    return (this as? EventOrTransactionId.TransactionId)?.let { TransactionId(it.transactionId) }
 }

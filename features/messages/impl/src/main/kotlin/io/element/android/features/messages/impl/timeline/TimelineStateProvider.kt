@@ -21,6 +21,9 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.virtual.aTimelineItemDaySeparatorModel
+import io.element.android.features.messages.impl.typing.TypingNotificationState
+import io.element.android.features.messages.impl.typing.aTypingNotificationState
+import io.element.android.features.roomcall.api.aStandByCallState
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.matrix.api.core.EventId
@@ -162,10 +165,11 @@ internal fun aTimelineItemEvent(
         groupPosition = groupPosition,
         localSendState = sendState,
         inReplyTo = inReplyTo,
-        debugInfo = debugInfo,
         isThreaded = isThreaded,
         origin = null,
-        messageShield = messageShield,
+        timelineItemDebugInfoProvider = { debugInfo },
+        messageShieldProvider = { messageShield },
+        sendHandleProvider = { null }
     )
 }
 
@@ -241,11 +245,13 @@ internal fun aTimelineRoomInfo(
     isDm: Boolean = false,
     userHasPermissionToSendMessage: Boolean = true,
     pinnedEventIds: List<EventId> = emptyList(),
+    typingNotificationState: TypingNotificationState = aTypingNotificationState(),
 ) = TimelineRoomInfo(
     isDm = isDm,
     name = name,
     userHasPermissionToSendMessage = userHasPermissionToSendMessage,
     userHasPermissionToSendReaction = true,
-    isCallOngoing = false,
+    roomCallState = aStandByCallState(),
     pinnedEventIds = pinnedEventIds,
+    typingNotificationState = typingNotificationState,
 )

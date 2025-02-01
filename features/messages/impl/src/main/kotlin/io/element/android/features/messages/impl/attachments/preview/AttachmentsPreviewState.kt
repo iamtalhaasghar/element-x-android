@@ -9,10 +9,14 @@ package io.element.android.features.messages.impl.attachments.preview
 
 import androidx.compose.runtime.Immutable
 import io.element.android.features.messages.impl.attachments.Attachment
+import io.element.android.libraries.textcomposer.model.TextEditorState
 
 data class AttachmentsPreviewState(
     val attachment: Attachment,
     val sendActionState: SendActionState,
+    val textEditorState: TextEditorState,
+    val allowCaption: Boolean,
+    val showCaptionCompatibilityWarning: Boolean,
     val eventSink: (AttachmentsPreviewEvents) -> Unit
 )
 
@@ -22,6 +26,7 @@ sealed interface SendActionState {
 
     @Immutable
     sealed interface Sending : SendActionState {
+        data object InstantSending : Sending
         data object Processing : Sending
         data class Uploading(val progress: Float) : Sending
     }

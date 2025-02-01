@@ -18,6 +18,7 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.anvil) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -48,7 +49,11 @@ allprojects {
         config.from(files("$rootDir/tools/detekt/detekt.yml"))
     }
     dependencies {
-        detektPlugins("io.nlopez.compose.rules:detekt:0.4.12")
+        detektPlugins("io.nlopez.compose.rules:detekt:0.4.22")
+    }
+
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        exclude("io/element/android/tests/konsist/failures/**")
     }
 
     // KtLint
@@ -71,8 +76,10 @@ allprojects {
             // To have XML report for Danger
             reporter(org.jlleitschuh.gradle.ktlint.reporter.ReporterType.CHECKSTYLE)
         }
+        val generatedPath = "${layout.buildDirectory.asFile.get()}/generated/"
         filter {
-            exclude { element -> element.file.path.contains("${layout.buildDirectory.asFile.get()}/generated/") }
+            exclude { element -> element.file.path.contains(generatedPath) }
+            exclude("io/element/android/tests/konsist/failures/**")
         }
     }
     // Dependency check
@@ -81,20 +88,15 @@ allprojects {
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        // Warnings are potential errors, so stop ignoring them
-        // This is disabled by default, but the CI will enforce this.
-        // You can override by passing `-PallWarningsAsErrors=true` in the command line
-        // Or add a line with "allWarningsAsErrors=true" in your ~/.gradle/gradle.properties file
-        kotlinOptions.allWarningsAsErrors = project.properties["allWarningsAsErrors"] == "true"
+        compilerOptions {
+            // Warnings are potential errors, so stop ignoring them
+            // This is disabled by default, but the CI will enforce this.
+            // You can override by passing `-PallWarningsAsErrors=true` in the command line
+            // Or add a line with "allWarningsAsErrors=true" in your ~/.gradle/gradle.properties file
+            allWarningsAsErrors = project.properties["allWarningsAsErrors"] == "true"
 
-        kotlinOptions {
-            /*
             // Uncomment to suppress Compose Kotlin compiler compatibility warning
-            freeCompilerArgs += listOf(
-                "-P",
-                "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"
-            )
-             */
+//            freeCompilerArgs.addAll(listOf("-P", "plugin:androidx.compose.compiler.plugins.kotlin:suppressKotlinVersionCompatibilityCheck=true"))
         }
     }
 }
@@ -191,19 +193,23 @@ subprojects {
 
 subprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        kotlinOptions {
+        compilerOptions {
             if (project.findProperty("composeCompilerReports") == "true") {
-                freeCompilerArgs += listOf(
-                    "-P",
-                    "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" +
-                        "${project.layout.buildDirectory.asFile.get().absolutePath}/compose_compiler"
+                freeCompilerArgs.addAll(
+                    listOf(
+                        "-P",
+                        "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=" +
+                            "${project.layout.buildDirectory.asFile.get().absolutePath}/compose_compiler"
+                    )
                 )
             }
             if (project.findProperty("composeCompilerMetrics") == "true") {
-                freeCompilerArgs += listOf(
-                    "-P",
-                    "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" +
-                        "${project.layout.buildDirectory.asFile.get().absolutePath}/compose_compiler"
+                freeCompilerArgs.addAll(
+                    listOf(
+                        "-P",
+                        "plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination=" +
+                            "${project.layout.buildDirectory.asFile.get().absolutePath}/compose_compiler"
+                    )
                 )
             }
         }

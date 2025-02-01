@@ -18,7 +18,43 @@ open class TimelineItemEncryptedContentProvider : PreviewParameterProvider<Timel
             aTimelineItemEncryptedContent(
                 data = UnableToDecryptContent.Data.MegolmV1AesSha2(
                     sessionId = "sessionId",
-                    utdCause = UtdCause.Membership,
+                    utdCause = UtdCause.SentBeforeWeJoined,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.VerificationViolation,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.UnsignedDevice,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.HistoricalMessageAndBackupIsDisabled,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.HistoricalMessageAndDeviceIsUnverified,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.WithheldUnverifiedOrInsecureDevice,
+                )
+            ),
+            aTimelineItemEncryptedContent(
+                data = UnableToDecryptContent.Data.MegolmV1AesSha2(
+                    sessionId = "sessionId",
+                    utdCause = UtdCause.WithheldBySender,
                 )
             ),
             aTimelineItemEncryptedContent(

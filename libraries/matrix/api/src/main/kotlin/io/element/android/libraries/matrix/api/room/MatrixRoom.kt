@@ -12,10 +12,11 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.ProgressCallback
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SendHandle
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.TransactionId
-import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.encryption.identity.IdentityStateChange
 import io.element.android.libraries.matrix.api.media.AudioInfo
 import io.element.android.libraries.matrix.api.media.FileInfo
 import io.element.android.libraries.matrix.api.media.ImageInfo
@@ -23,13 +24,16 @@ import io.element.android.libraries.matrix.api.media.MediaUploadHandler
 import io.element.android.libraries.matrix.api.media.VideoInfo
 import io.element.android.libraries.matrix.api.poll.PollKind
 import io.element.android.libraries.matrix.api.room.draft.ComposerDraft
+import io.element.android.libraries.matrix.api.room.knock.KnockRequest
 import io.element.android.libraries.matrix.api.room.location.AssetType
 import io.element.android.libraries.matrix.api.room.powerlevels.MatrixRoomPowerLevels
 import io.element.android.libraries.matrix.api.room.powerlevels.UserRoleChange
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetDriver
 import io.element.android.libraries.matrix.api.widget.MatrixWidgetSettings
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.Closeable
@@ -50,8 +54,16 @@ interface MatrixRoom : Closeable {
     val activeMemberCount: Long
     val joinedMemberCount: Long
 
+    val roomCoroutineScope: CoroutineScope
+
     val roomInfoFlow: Flow<MatrixRoomInfo>
     val roomTypingMembersFlow: Flow<List<UserId>>
+    val identityStateChangesFlow: Flow<List<IdentityStateChange>>
+
+    /**
+     * The current knock requests in the room as a Flow.
+     */
+    val knockRequestsFlow: Flow<List<KnockRequest>>
 
     /**
      * A one-to-one is a room with exactly 2 members.
@@ -104,6 +116,11 @@ interface MatrixRoom : Closeable {
      */
     suspend fun pinnedEventsTimeline(): Result<Timeline>
 
+    /**
+     * Create a new timeline for the media events of the room.
+     */
+    suspend fun mediaTimeline(): Result<Timeline>
+
     fun destroy()
 
     suspend fun subscribeToSync()
@@ -130,8 +147,8 @@ interface MatrixRoom : Closeable {
         file: File,
         thumbnailFile: File?,
         imageInfo: ImageInfo,
-        body: String?,
-        formattedBody: String?,
+        caption: String?,
+        formattedCaption: String?,
         progressCallback: ProgressCallback?
     ): Result<MediaUploadHandler>
 
@@ -139,22 +156,32 @@ interface MatrixRoom : Closeable {
         file: File,
         thumbnailFile: File?,
         videoInfo: VideoInfo,
-        body: String?,
-        formattedBody: String?,
+        caption: String?,
+        formattedCaption: String?,
         progressCallback: ProgressCallback?
     ): Result<MediaUploadHandler>
 
-    suspend fun sendAudio(file: File, audioInfo: AudioInfo, progressCallback: ProgressCallback?): Result<MediaUploadHandler>
+    suspend fun sendAudio(
+        file: File,
+        audioInfo: AudioInfo,
+        caption: String?,
+        formattedCaption: String?,
+        progressCallback: ProgressCallback?,
+    ): Result<MediaUploadHandler>
 
-    suspend fun sendFile(file: File, fileInfo: FileInfo, progressCallback: ProgressCallback?): Result<MediaUploadHandler>
+    suspend fun sendFile(
+        file: File,
+        fileInfo: FileInfo,
+        caption: String?,
+        formattedCaption: String?,
+        progressCallback: ProgressCallback?,
+    ): Result<MediaUploadHandler>
 
-    suspend fun toggleReaction(emoji: String, uniqueId: UniqueId): Result<Unit>
+    suspend fun toggleReaction(emoji: String, eventOrTransactionId: EventOrTransactionId): Result<Unit>
 
     suspend fun forwardEvent(eventId: EventId, roomIds: List<RoomId>): Result<Unit>
 
-    suspend fun retrySendMessage(transactionId: TransactionId): Result<Unit>
-
-    suspend fun cancelSend(transactionId: TransactionId): Result<Boolean>
+    suspend fun cancelSend(transactionId: TransactionId): Result<Unit>
 
     suspend fun leave(): Result<Unit>
 
@@ -213,6 +240,11 @@ interface MatrixRoom : Closeable {
      *
      */
     suspend fun setUnreadFlag(isUnread: Boolean): Result<Unit>
+
+    /**
+     * Clear the event cache storage for the current room.
+     */
+    suspend fun clearEventCacheStorage(): Result<Unit>
 
     /**
      * Share a location message in the room.
@@ -354,20 +386,20 @@ interface MatrixRoom : Closeable {
      * Ignore the local trust for the given devices and resend messages that failed to send because said devices are unverified.
      *
      * @param devices The map of users identifiers to device identifiers received in the error
-     * @param transactionId The send queue transaction identifier of the local echo the send error applies to.
+     * @param sendHandle The send queue handle of the local echo the send error applies to. It can be used to retry the upload.
      *
      */
-    suspend fun ignoreDeviceTrustAndResend(devices: Map<UserId, List<DeviceId>>, transactionId: TransactionId): Result<Unit>
+    suspend fun ignoreDeviceTrustAndResend(devices: Map<UserId, List<DeviceId>>, sendHandle: SendHandle): Result<Unit>
 
     /**
      * Remove verification requirements for the given users and
      * resend messages that failed to send because their identities were no longer verified.
      *
      * @param userIds The list of users identifiers received in the error.
-     * @param transactionId The send queue transaction identifier of the local echo the send error applies to.
+     * @param sendHandle The send queue handle of the local echo the send error applies to. It can be used to retry the upload.
      *
      */
-    suspend fun withdrawVerificationAndResend(userIds: List<UserId>, transactionId: TransactionId): Result<Unit>
+    suspend fun withdrawVerificationAndResend(userIds: List<UserId>, sendHandle: SendHandle): Result<Unit>
 
     override fun close() = destroy()
 }

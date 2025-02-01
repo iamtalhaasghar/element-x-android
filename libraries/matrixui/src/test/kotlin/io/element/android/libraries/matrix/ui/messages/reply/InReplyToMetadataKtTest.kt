@@ -18,6 +18,7 @@ import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.media.AudioInfo
@@ -61,7 +62,7 @@ class InReplyToMetadataKtTest {
     @Test
     fun `any message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
-            anInReplyToDetailsReady(eventContent = aMessageContent()).metadata()
+            anInReplyToDetailsReady(eventContent = aMessageContent()).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(InReplyToMetadata.Text("textContent"))
@@ -75,14 +76,14 @@ class InReplyToMetadataKtTest {
             anInReplyToDetailsReady(
                 eventContent = aMessageContent(
                     messageType = ImageMessageType(
-                        body = "body",
-                        formatted = null,
-                        filename = null,
+                        filename = "filename",
+                        caption = null,
+                        formattedCaption = null,
                         source = aMediaSource(),
                         info = anImageInfo(),
                     )
                 )
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -100,15 +101,46 @@ class InReplyToMetadataKtTest {
     }
 
     @Test
+    fun `an image message content, no thumbnail`() = runTest {
+        moleculeFlow(RecompositionMode.Immediate) {
+            anInReplyToDetailsReady(
+                eventContent = aMessageContent(
+                    messageType = ImageMessageType(
+                        filename = "filename",
+                        caption = "caption",
+                        formattedCaption = null,
+                        source = aMediaSource(),
+                        info = anImageInfo(),
+                    )
+                )
+            ).metadata(hideImage = true)
+        }.test {
+            awaitItem().let {
+                assertThat(it).isEqualTo(
+                    InReplyToMetadata.Thumbnail(
+                        attachmentThumbnailInfo = AttachmentThumbnailInfo(
+                            thumbnailSource = null,
+                            textContent = "body",
+                            type = AttachmentThumbnailType.Image,
+                            blurHash = A_BLUR_HASH,
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
     fun `a sticker message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = StickerContent(
+                    filename = "filename",
                     body = "body",
                     info = anImageInfo(),
                     source = aMediaSource(url = "url")
                 )
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -126,19 +158,46 @@ class InReplyToMetadataKtTest {
     }
 
     @Test
+    fun `a sticker message content, no thumbnail`() = runTest {
+        moleculeFlow(RecompositionMode.Immediate) {
+            anInReplyToDetailsReady(
+                eventContent = StickerContent(
+                    filename = "filename",
+                    body = "body",
+                    info = anImageInfo(),
+                    source = aMediaSource(url = "url")
+                )
+            ).metadata(hideImage = true)
+        }.test {
+            awaitItem().let {
+                assertThat(it).isEqualTo(
+                    InReplyToMetadata.Thumbnail(
+                        attachmentThumbnailInfo = AttachmentThumbnailInfo(
+                            thumbnailSource = null,
+                            textContent = "body",
+                            type = AttachmentThumbnailType.Image,
+                            blurHash = A_BLUR_HASH,
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
     fun `a video message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = aMessageContent(
                     messageType = VideoMessageType(
-                        body = "body",
-                        formatted = null,
-                        filename = null,
+                        filename = "filename",
+                        caption = null,
+                        formattedCaption = null,
                         source = aMediaSource(),
                         info = aVideoInfo(),
                     )
                 )
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -156,12 +215,44 @@ class InReplyToMetadataKtTest {
     }
 
     @Test
+    fun `a video message content, no thumbnail`() = runTest {
+        moleculeFlow(RecompositionMode.Immediate) {
+            anInReplyToDetailsReady(
+                eventContent = aMessageContent(
+                    messageType = VideoMessageType(
+                        filename = "filename",
+                        caption = "caption",
+                        formattedCaption = null,
+                        source = aMediaSource(),
+                        info = aVideoInfo(),
+                    )
+                )
+            ).metadata(hideImage = true)
+        }.test {
+            awaitItem().let {
+                assertThat(it).isEqualTo(
+                    InReplyToMetadata.Thumbnail(
+                        attachmentThumbnailInfo = AttachmentThumbnailInfo(
+                            thumbnailSource = null,
+                            textContent = "body",
+                            type = AttachmentThumbnailType.Video,
+                            blurHash = A_BLUR_HASH,
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
     fun `a file message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = aMessageContent(
                     messageType = FileMessageType(
-                        body = "body",
+                        filename = "filename",
+                        caption = "caption",
+                        formattedCaption = null,
                         source = aMediaSource(),
                         info = FileInfo(
                             mimetype = null,
@@ -171,7 +262,7 @@ class InReplyToMetadataKtTest {
                         ),
                     )
                 )
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -189,12 +280,49 @@ class InReplyToMetadataKtTest {
     }
 
     @Test
+    fun `a file message content, no thumbnail`() = runTest {
+        moleculeFlow(RecompositionMode.Immediate) {
+            anInReplyToDetailsReady(
+                eventContent = aMessageContent(
+                    messageType = FileMessageType(
+                        filename = "filename",
+                        caption = "caption",
+                        formattedCaption = null,
+                        source = aMediaSource(),
+                        info = FileInfo(
+                            mimetype = null,
+                            size = null,
+                            thumbnailInfo = null,
+                            thumbnailSource = aMediaSource(),
+                        ),
+                    )
+                )
+            ).metadata(hideImage = true)
+        }.test {
+            awaitItem().let {
+                assertThat(it).isEqualTo(
+                    InReplyToMetadata.Thumbnail(
+                        attachmentThumbnailInfo = AttachmentThumbnailInfo(
+                            thumbnailSource = null,
+                            textContent = "body",
+                            type = AttachmentThumbnailType.File,
+                            blurHash = null,
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    @Test
     fun `a audio message content`() = runTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = aMessageContent(
                     messageType = AudioMessageType(
-                        body = "body",
+                        filename = "filename",
+                        caption = "caption",
+                        formattedCaption = null,
                         source = aMediaSource(),
                         info = AudioInfo(
                             duration = null,
@@ -203,7 +331,7 @@ class InReplyToMetadataKtTest {
                         ),
                     )
                 )
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -231,7 +359,7 @@ class InReplyToMetadataKtTest {
                             description = null,
                         )
                     )
-                ).metadata()
+                ).metadata(hideImage = false)
             }
         }.test {
             awaitItem().let {
@@ -256,13 +384,15 @@ class InReplyToMetadataKtTest {
                 anInReplyToDetailsReady(
                     eventContent = aMessageContent(
                         messageType = VoiceMessageType(
-                            body = "body",
+                            filename = "filename",
+                            caption = "caption",
+                            formattedCaption = null,
                             source = aMediaSource(),
                             info = null,
                             details = null,
                         )
                     )
-                ).metadata()
+                ).metadata(hideImage = false)
             }
         }.test {
             awaitItem().let {
@@ -285,7 +415,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = aPollContent()
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(
@@ -307,7 +437,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = RedactedContent
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(InReplyToMetadata.Redacted)
@@ -320,7 +450,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = UnableToDecryptContent(UnableToDecryptContent.Data.Unknown)
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isEqualTo(InReplyToMetadata.UnableToDecrypt)
@@ -333,7 +463,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = FailedToParseMessageLikeContent("", "")
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -346,7 +476,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = FailedToParseStateContent("", "", "")
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -359,7 +489,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = ProfileChangeContent("", "", "", "")
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -372,7 +502,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = RoomMembershipContent(A_USER_ID, null, null)
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -385,7 +515,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = StateContent("", OtherState.RoomJoinRules)
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -398,7 +528,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = UnknownContent
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -411,7 +541,7 @@ class InReplyToMetadataKtTest {
         moleculeFlow(RecompositionMode.Immediate) {
             anInReplyToDetailsReady(
                 eventContent = null
-            ).metadata()
+            ).metadata(hideImage = false)
         }.test {
             awaitItem().let {
                 assertThat(it).isNull()
@@ -451,7 +581,7 @@ fun anImageInfo(): ImageInfo {
     return ImageInfo(
         height = 100,
         width = 100,
-        mimetype = "image/jpeg",
+        mimetype = MimeTypes.Jpeg,
         size = 1000,
         thumbnailInfo = null,
         thumbnailSource = aMediaSource(),

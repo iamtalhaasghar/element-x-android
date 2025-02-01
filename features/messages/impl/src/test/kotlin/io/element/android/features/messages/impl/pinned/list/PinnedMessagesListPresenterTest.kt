@@ -9,11 +9,12 @@ package io.element.android.features.messages.impl.pinned.list
 
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.PinUnpinAction
-import io.element.android.features.messages.impl.actionlist.FakeActionListPresenter
+import io.element.android.features.messages.impl.actionlist.anActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
 import io.element.android.features.messages.impl.fixtures.aTimelineItemsFactoryCreator
 import io.element.android.features.messages.impl.pinned.PinnedEventsTimelineProvider
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.protection.aTimelineProtectionState
 import io.element.android.features.networkmonitor.api.NetworkMonitor
 import io.element.android.features.networkmonitor.test.FakeNetworkMonitor
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher
@@ -309,8 +310,9 @@ class PinnedMessagesListPresenterTest {
             room = room,
             timelineItemsFactoryCreator = aTimelineItemsFactoryCreator(),
             timelineProvider = timelineProvider,
+            timelineProtectionPresenter = { aTimelineProtectionState() },
             snackbarDispatcher = SnackbarDispatcher(),
-            actionListPresenterFactory = FakeActionListPresenter.Factory,
+            actionListPresenter = { anActionListState() },
             analyticsService = analyticsService,
             appCoroutineScope = this,
         )

@@ -11,13 +11,18 @@ import android.net.Uri
 import io.element.android.libraries.core.mimetype.MimeTypes
 import io.element.android.libraries.matrix.api.media.AudioInfo
 import io.element.android.libraries.matrix.api.media.FileInfo
+import io.element.android.libraries.matrix.api.media.ImageInfo
+import io.element.android.libraries.matrix.api.media.VideoInfo
 import io.element.android.libraries.mediaupload.api.MediaPreProcessor
 import io.element.android.libraries.mediaupload.api.MediaUploadInfo
 import io.element.android.tests.testutils.simulateLongTask
+import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 import kotlin.time.Duration.Companion.seconds
 
-class FakeMediaPreProcessor : MediaPreProcessor {
+class FakeMediaPreProcessor(
+    private val processLatch: CompletableDeferred<Unit>? = null,
+) : MediaPreProcessor {
     var processCallCount = 0
         private set
 
@@ -39,6 +44,7 @@ class FakeMediaPreProcessor : MediaPreProcessor {
         deleteOriginal: Boolean,
         compressIfPossible: Boolean
     ): Result<MediaUploadInfo> = simulateLongTask {
+        processLatch?.await()
         processCallCount++
         result
     }
@@ -57,6 +63,47 @@ class FakeMediaPreProcessor : MediaPreProcessor {
                         size = 1000,
                         mimetype = MimeTypes.Ogg,
                     ),
+                )
+            )
+        )
+    }
+
+    fun givenImageResult() {
+        givenResult(
+            Result.success(
+                MediaUploadInfo.Image(
+                    file = File("image.jpg"),
+                    imageInfo = ImageInfo(
+                        height = 100,
+                        width = 100,
+                        mimetype = MimeTypes.Jpeg,
+                        size = 1000,
+                        thumbnailInfo = null,
+                        thumbnailSource = null,
+                        blurhash = null,
+                    ),
+                    thumbnailFile = null,
+                )
+            )
+        )
+    }
+
+    fun givenVideoResult() {
+        givenResult(
+            Result.success(
+                MediaUploadInfo.Video(
+                    file = File("image.jpg"),
+                    videoInfo = VideoInfo(
+                        duration = 1000.seconds,
+                        height = 100,
+                        width = 100,
+                        mimetype = MimeTypes.Mp4,
+                        size = 1000,
+                        thumbnailInfo = null,
+                        thumbnailSource = null,
+                        blurhash = null,
+                    ),
+                    thumbnailFile = null,
                 )
             )
         )

@@ -8,8 +8,10 @@
 package io.element.android.features.messages.impl.timeline.components.event
 
 import android.text.SpannedString
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -51,57 +53,80 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContentProvider
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemVideoContent
+import io.element.android.features.messages.impl.timeline.protection.ProtectedView
+import io.element.android.features.messages.impl.timeline.protection.coerceRatioWhenHidingContent
 import io.element.android.libraries.designsystem.components.blurhash.blurHashBackground
 import io.element.android.libraries.designsystem.modifiers.roundedBackground
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.matrix.api.timeline.item.event.MessageFormat
+import io.element.android.libraries.matrix.ui.media.MAX_THUMBNAIL_HEIGHT
+import io.element.android.libraries.matrix.ui.media.MAX_THUMBNAIL_WIDTH
 import io.element.android.libraries.matrix.ui.media.MediaRequestData
 import io.element.android.libraries.textcomposer.ElementRichTextEditorStyle
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.wysiwyg.compose.EditorStyledText
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TimelineItemVideoView(
     content: TimelineItemVideoContent,
+    hideMediaContent: Boolean,
+    onContentClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
+    onShowContentClick: () -> Unit,
+    onLinkClick: (String) -> Unit,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description = stringResource(CommonStrings.common_image)
+    val description = stringResource(CommonStrings.common_video)
     Column(
         modifier = modifier.semantics { contentDescription = description }
     ) {
         val containerModifier = if (content.showCaption) {
-            Modifier.padding(top = 6.dp).clip(RoundedCornerShape(6.dp))
+            Modifier
+                .padding(top = 6.dp)
+                .clip(RoundedCornerShape(6.dp))
         } else {
             Modifier
         }
         TimelineItemAspectRatioBox(
             modifier = containerModifier.blurHashBackground(content.blurHash, alpha = 0.9f),
-            aspectRatio = content.aspectRatio,
+            aspectRatio = coerceRatioWhenHidingContent(content.aspectRatio, hideMediaContent),
             contentAlignment = Alignment.Center,
         ) {
-            var isLoaded by remember { mutableStateOf(false) }
-            AsyncImage(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (isLoaded) Modifier.background(Color.White) else Modifier),
-                model = MediaRequestData(content.thumbnailSource, MediaRequestData.Kind.File(content.body, content.mimeType)),
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.Center,
-                contentDescription = description,
-                onState = { isLoaded = it is AsyncImagePainter.State.Success },
-            )
-
-            Box(
-                modifier = Modifier.roundedBackground(),
-                contentAlignment = Alignment.Center,
+            ProtectedView(
+                hideContent = hideMediaContent,
+                onShowClick = onShowContentClick,
             ) {
-                Image(
-                    Icons.Default.PlayArrow,
-                    contentDescription = stringResource(id = CommonStrings.a11y_play),
-                    colorFilter = ColorFilter.tint(Color.White),
+                var isLoaded by remember { mutableStateOf(false) }
+                AsyncImage(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (isLoaded) Modifier.background(Color.White) else Modifier)
+                        .then(if (onContentClick != null) Modifier.combinedClickable(onClick = onContentClick, onLongClick = onLongClick) else Modifier),
+                    model = MediaRequestData(
+                        source = content.thumbnailSource,
+                        kind = MediaRequestData.Kind.Thumbnail(
+                            width = content.thumbnailWidth?.toLong() ?: MAX_THUMBNAIL_WIDTH,
+                            height = content.thumbnailHeight?.toLong() ?: MAX_THUMBNAIL_HEIGHT,
+                        )
+                    ),
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.Center,
+                    contentDescription = description,
+                    onState = { isLoaded = it is AsyncImagePainter.State.Success },
                 )
+
+                Box(
+                    modifier = Modifier.roundedBackground(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        Icons.Default.PlayArrow,
+                        contentDescription = stringResource(id = CommonStrings.a11y_play),
+                        colorFilter = ColorFilter.tint(Color.White),
+                    )
+                }
             }
         }
 
@@ -110,16 +135,19 @@ fun TimelineItemVideoView(
             val caption = if (LocalInspectionMode.current) {
                 SpannedString(content.caption)
             } else {
-                content.formatted?.body?.takeIf { content.formatted.format == MessageFormat.HTML } ?: SpannedString(content.caption)
+                content.formattedCaption ?: SpannedString(content.caption)
             }
             CompositionLocalProvider(
                 LocalContentColor provides ElementTheme.colors.textPrimary,
                 LocalTextStyle provides ElementTheme.typography.fontBodyLgRegular,
             ) {
+                val aspectRatio = content.aspectRatio ?: DEFAULT_ASPECT_RATIO
                 EditorStyledText(
                     modifier = Modifier
-                        .widthIn(min = MIN_HEIGHT_IN_DP.dp * content.aspectRatio!!, max = MAX_HEIGHT_IN_DP.dp * content.aspectRatio),
+                        .padding(horizontal = 4.dp) // This is (12.dp - 8.dp) contentPadding from CommonLayout
+                        .widthIn(min = MIN_HEIGHT_IN_DP.dp * aspectRatio, max = MAX_HEIGHT_IN_DP.dp * aspectRatio),
                     text = caption,
+                    onLinkClickedListener = onLinkClick,
                     style = ElementRichTextEditorStyle.textStyle(),
                     releaseOnDetach = false,
                     onTextLayout = ContentAvoidingLayout.measureLegacyLastTextLine(onContentLayoutChange = onContentLayoutChange),
@@ -132,7 +160,29 @@ fun TimelineItemVideoView(
 @PreviewsDayNight
 @Composable
 internal fun TimelineItemVideoViewPreview(@PreviewParameter(TimelineItemVideoContentProvider::class) content: TimelineItemVideoContent) = ElementPreview {
-    TimelineItemVideoView(content, {})
+    TimelineItemVideoView(
+        content = content,
+        hideMediaContent = false,
+        onShowContentClick = {},
+        onContentClick = {},
+        onLongClick = {},
+        onLinkClick = {},
+        onContentLayoutChange = {},
+    )
+}
+
+@PreviewsDayNight
+@Composable
+internal fun TimelineItemVideoViewHideMediaContentPreview() = ElementPreview {
+    TimelineItemVideoView(
+        content = aTimelineItemVideoContent(),
+        hideMediaContent = true,
+        onShowContentClick = {},
+        onContentClick = {},
+        onLongClick = {},
+        onLinkClick = {},
+        onContentLayoutChange = {},
+    )
 }
 
 @PreviewsDayNight
@@ -145,12 +195,23 @@ internal fun TimelineVideoWithCaptionRowPreview() = ElementPreview {
                     isMine = isMine,
                     content = aTimelineItemVideoContent().copy(
                         filename = "video.mp4",
-                        body = "A long caption that may wrap into several lines",
+                        caption = "A long caption that may wrap into several lines",
                         aspectRatio = 2.5f,
                     ),
                     groupPosition = TimelineItemGroupPosition.Last,
                 ),
             )
         }
+        ATimelineItemEventRow(
+            event = aTimelineItemEvent(
+                isMine = false,
+                content = aTimelineItemVideoContent().copy(
+                    filename = "video.mp4",
+                    caption = "Video with null aspect ratio",
+                    aspectRatio = null,
+                ),
+                groupPosition = TimelineItemGroupPosition.Last,
+            ),
+        )
     }
 }

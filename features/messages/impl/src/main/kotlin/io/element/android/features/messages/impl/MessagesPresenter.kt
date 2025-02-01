@@ -28,28 +28,28 @@ import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.appconfig.MessageComposerConfig
 import io.element.android.features.messages.api.timeline.HtmlConverterProvider
 import io.element.android.features.messages.impl.actionlist.ActionListEvents
-import io.element.android.features.messages.impl.actionlist.ActionListPresenter
+import io.element.android.features.messages.impl.actionlist.ActionListState
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
-import io.element.android.features.messages.impl.actionlist.model.TimelineItemActionPostProcessor
+import io.element.android.features.messages.impl.crypto.identity.IdentityChangeState
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvents
-import io.element.android.features.messages.impl.messagecomposer.MessageComposerPresenter
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.timeline.TimelineController
 import io.element.android.features.messages.impl.timeline.TimelineEvents
-import io.element.android.features.messages.impl.timeline.TimelinePresenter
 import io.element.android.features.messages.impl.timeline.TimelineState
-import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionPresenter
-import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryPresenter
-import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetPresenter
+import io.element.android.features.messages.impl.timeline.components.customreaction.CustomReactionState
+import io.element.android.features.messages.impl.timeline.components.reactionsummary.ReactionSummaryState
+import io.element.android.features.messages.impl.timeline.components.receipt.bottomsheet.ReadReceiptBottomSheetState
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContentWithAttachment
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
-import io.element.android.features.messages.impl.typing.TypingNotificationPresenter
-import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageComposerPresenter
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
+import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.networkmonitor.api.NetworkMonitor
 import io.element.android.features.networkmonitor.api.NetworkStatus
+import io.element.android.features.roomcall.api.RoomCallState
 import io.element.android.libraries.androidutils.clipboard.ClipboardHelper
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -62,7 +62,6 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
-import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.MatrixRoom
 import io.element.android.libraries.matrix.api.room.MatrixRoomInfo
@@ -73,9 +72,9 @@ import io.element.android.libraries.matrix.api.room.powerlevels.canPinUnpin
 import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOther
 import io.element.android.libraries.matrix.api.room.powerlevels.canRedactOwn
 import io.element.android.libraries.matrix.api.room.powerlevels.canSendMessage
+import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
 import io.element.android.libraries.matrix.ui.messages.reply.map
 import io.element.android.libraries.matrix.ui.model.getAvatarData
-import io.element.android.libraries.matrix.ui.room.canCall
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
@@ -88,15 +87,17 @@ import timber.log.Timber
 class MessagesPresenter @AssistedInject constructor(
     @Assisted private val navigator: MessagesNavigator,
     private val room: MatrixRoom,
-    private val composerPresenter: MessageComposerPresenter,
-    private val voiceMessageComposerPresenter: VoiceMessageComposerPresenter,
-    timelinePresenterFactory: TimelinePresenter.Factory,
-    private val typingNotificationPresenter: TypingNotificationPresenter,
-    private val actionListPresenterFactory: ActionListPresenter.Factory,
-    private val customReactionPresenter: CustomReactionPresenter,
-    private val reactionSummaryPresenter: ReactionSummaryPresenter,
-    private val readReceiptBottomSheetPresenter: ReadReceiptBottomSheetPresenter,
+    @Assisted private val composerPresenter: Presenter<MessageComposerState>,
+    private val voiceMessageComposerPresenter: Presenter<VoiceMessageComposerState>,
+    @Assisted private val timelinePresenter: Presenter<TimelineState>,
+    private val timelineProtectionPresenter: Presenter<TimelineProtectionState>,
+    private val identityChangeStatePresenter: Presenter<IdentityChangeState>,
+    @Assisted private val actionListPresenter: Presenter<ActionListState>,
+    private val customReactionPresenter: Presenter<CustomReactionState>,
+    private val reactionSummaryPresenter: Presenter<ReactionSummaryState>,
+    private val readReceiptBottomSheetPresenter: Presenter<ReadReceiptBottomSheetState>,
     private val pinnedMessagesBannerPresenter: Presenter<PinnedMessagesBannerState>,
+    private val roomCallStatePresenter: Presenter<RoomCallState>,
     private val networkMonitor: NetworkMonitor,
     private val snackbarDispatcher: SnackbarDispatcher,
     private val dispatchers: CoroutineDispatchers,
@@ -108,12 +109,14 @@ class MessagesPresenter @AssistedInject constructor(
     private val permalinkParser: PermalinkParser,
     private val analyticsService: AnalyticsService,
 ) : Presenter<MessagesState> {
-    private val timelinePresenter = timelinePresenterFactory.create(navigator = navigator)
-    private val actionListPresenter = actionListPresenterFactory.create(TimelineItemActionPostProcessor.Default)
-
     @AssistedFactory
     interface Factory {
-        fun create(navigator: MessagesNavigator): MessagesPresenter
+        fun create(
+            navigator: MessagesNavigator,
+            composerPresenter: Presenter<MessageComposerState>,
+            timelinePresenter: Presenter<TimelineState>,
+            actionListPresenter: Presenter<ActionListState>,
+        ): MessagesPresenter
     }
 
     @Composable
@@ -125,12 +128,14 @@ class MessagesPresenter @AssistedInject constructor(
         val composerState = composerPresenter.present()
         val voiceMessageComposerState = voiceMessageComposerPresenter.present()
         val timelineState = timelinePresenter.present()
-        val typingNotificationState = typingNotificationPresenter.present()
+        val timelineProtectionState = timelineProtectionPresenter.present()
+        val identityChangeState = identityChangeStatePresenter.present()
         val actionListState = actionListPresenter.present()
         val customReactionState = customReactionPresenter.present()
         val reactionSummaryState = reactionSummaryPresenter.present()
         val readReceiptBottomSheetState = readReceiptBottomSheetPresenter.present()
         val pinnedMessagesBannerState = pinnedMessagesBannerPresenter.present()
+        val roomCallState = roomCallStatePresenter.present()
 
         val syncUpdateFlow = room.syncUpdateFlow.collectAsState()
 
@@ -149,8 +154,6 @@ class MessagesPresenter @AssistedInject constructor(
         var hasDismissedInviteDialog by rememberSaveable {
             mutableStateOf(false)
         }
-
-        val canJoinCall by room.canCall(updateKey = syncUpdateFlow.value)
 
         LaunchedEffect(Unit) {
             // Remove the unread flag on entering but don't send read receipts
@@ -185,10 +188,11 @@ class MessagesPresenter @AssistedInject constructor(
                         composerState = composerState,
                         enableTextFormatting = composerState.showTextFormatting,
                         timelineState = timelineState,
+                        timelineProtectionState = timelineProtectionState,
                     )
                 }
                 is MessagesEvents.ToggleReaction -> {
-                    localCoroutineScope.toggleReaction(event.emoji, event.uniqueId)
+                    localCoroutineScope.toggleReaction(event.emoji, event.eventOrTransactionId)
                 }
                 is MessagesEvents.InviteDialogDismissed -> {
                     hasDismissedInviteDialog = true
@@ -201,12 +205,6 @@ class MessagesPresenter @AssistedInject constructor(
             }
         }
 
-        val callState = when {
-            !canJoinCall -> RoomCallState.DISABLED
-            roomInfo?.hasRoomCall == true -> RoomCallState.ONGOING
-            else -> RoomCallState.ENABLED
-        }
-
         return MessagesState(
             roomId = room.roomId,
             roomName = roomName,
@@ -216,7 +214,8 @@ class MessagesPresenter @AssistedInject constructor(
             userEventPermissions = userEventPermissions,
             voiceMessageComposerState = voiceMessageComposerState,
             timelineState = timelineState,
-            typingNotificationState = typingNotificationState,
+            timelineProtectionState = timelineProtectionState,
+            identityChangeState = identityChangeState,
             actionListState = actionListState,
             customReactionState = customReactionState,
             reactionSummaryState = reactionSummaryState,
@@ -228,7 +227,7 @@ class MessagesPresenter @AssistedInject constructor(
             enableTextFormatting = MessageComposerConfig.ENABLE_RICH_TEXT_EDITING,
             enableVoiceMessages = enableVoiceMessages,
             appName = buildMeta.applicationName,
-            callState = callState,
+            roomCallState = roomCallState,
             pinnedMessagesBannerState = pinnedMessagesBannerState,
             eventSink = { handleEvents(it) }
         )
@@ -266,16 +265,22 @@ class MessagesPresenter @AssistedInject constructor(
         action: TimelineItemAction,
         targetEvent: TimelineItem.Event,
         composerState: MessageComposerState,
+        timelineProtectionState: TimelineProtectionState,
         enableTextFormatting: Boolean,
         timelineState: TimelineState,
     ) = launch {
         when (action) {
-            TimelineItemAction.Copy -> handleCopyContents(targetEvent)
+            TimelineItemAction.CopyText -> handleCopyContents(targetEvent)
+            TimelineItemAction.CopyCaption -> handleCopyCaption(targetEvent)
             TimelineItemAction.CopyLink -> handleCopyLink(targetEvent)
             TimelineItemAction.Redact -> handleActionRedact(targetEvent)
-            TimelineItemAction.Edit -> handleActionEdit(targetEvent, composerState, enableTextFormatting)
+            TimelineItemAction.Edit,
+            TimelineItemAction.EditPoll -> handleActionEdit(targetEvent, composerState, enableTextFormatting)
+            TimelineItemAction.AddCaption -> handleActionAddCaption(targetEvent, composerState)
+            TimelineItemAction.EditCaption -> handleActionEditCaption(targetEvent, composerState)
+            TimelineItemAction.RemoveCaption -> handleRemoveCaption(targetEvent)
             TimelineItemAction.Reply,
-            TimelineItemAction.ReplyInThread -> handleActionReply(targetEvent, composerState)
+            TimelineItemAction.ReplyInThread -> handleActionReply(targetEvent, composerState, timelineProtectionState)
             TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
             TimelineItemAction.Forward -> handleForwardAction(targetEvent)
             TimelineItemAction.ReportContent -> handleReportAction(targetEvent)
@@ -283,6 +288,16 @@ class MessagesPresenter @AssistedInject constructor(
             TimelineItemAction.Pin -> handlePinAction(targetEvent)
             TimelineItemAction.Unpin -> handleUnpinAction(targetEvent)
             TimelineItemAction.ViewInTimeline -> Unit
+        }
+    }
+
+    private suspend fun handleRemoveCaption(targetEvent: TimelineItem.Event) {
+        timelineController.invokeOnCurrentTimeline {
+            editCaption(
+                eventOrTransactionId = targetEvent.eventOrTransactionId,
+                caption = null,
+                formattedCaption = null,
+            )
         }
     }
 
@@ -322,10 +337,10 @@ class MessagesPresenter @AssistedInject constructor(
 
     private fun CoroutineScope.toggleReaction(
         emoji: String,
-        uniqueId: UniqueId,
+        eventOrTransactionId: EventOrTransactionId,
     ) = launch(dispatchers.io) {
         timelineController.invokeOnCurrentTimeline {
-            toggleReaction(emoji, uniqueId)
+            toggleReaction(emoji, eventOrTransactionId)
                 .onFailure { Timber.e(it) }
         }
     }
@@ -355,7 +370,7 @@ class MessagesPresenter @AssistedInject constructor(
 
     private suspend fun handleActionRedact(event: TimelineItem.Event) {
         timelineController.invokeOnCurrentTimeline {
-            redactEvent(eventId = event.eventId, transactionId = event.transactionId, reason = null)
+            redactEvent(eventOrTransactionId = event.eventOrTransactionId, reason = null)
                 .onFailure { Timber.e(it) }
         }
     }
@@ -372,8 +387,7 @@ class MessagesPresenter @AssistedInject constructor(
             }
             else -> {
                 val composerMode = MessageComposerMode.Edit(
-                    targetEvent.eventId,
-                    targetEvent.transactionId,
+                    targetEvent.eventOrTransactionId,
                     (targetEvent.content as? TimelineItemTextBasedContent)?.let {
                         if (enableTextFormatting) {
                             it.htmlBody ?: it.body
@@ -389,11 +403,46 @@ class MessagesPresenter @AssistedInject constructor(
         }
     }
 
-    private suspend fun handleActionReply(targetEvent: TimelineItem.Event, composerState: MessageComposerState) {
+    private suspend fun handleActionAddCaption(
+        targetEvent: TimelineItem.Event,
+        composerState: MessageComposerState,
+    ) {
+        val composerMode = MessageComposerMode.EditCaption(
+            eventOrTransactionId = targetEvent.eventOrTransactionId,
+            content = "",
+            showCaptionCompatibilityWarning = featureFlagsService.isFeatureEnabled(FeatureFlags.MediaCaptionWarning),
+        )
+        composerState.eventSink(
+            MessageComposerEvents.SetMode(composerMode)
+        )
+    }
+
+    private suspend fun handleActionEditCaption(
+        targetEvent: TimelineItem.Event,
+        composerState: MessageComposerState,
+    ) {
+        val composerMode = MessageComposerMode.EditCaption(
+            eventOrTransactionId = targetEvent.eventOrTransactionId,
+            content = (targetEvent.content as? TimelineItemEventContentWithAttachment)?.caption.orEmpty(),
+            showCaptionCompatibilityWarning = featureFlagsService.isFeatureEnabled(FeatureFlags.MediaCaptionWarning),
+        )
+        composerState.eventSink(
+            MessageComposerEvents.SetMode(composerMode)
+        )
+    }
+
+    private suspend fun handleActionReply(
+        targetEvent: TimelineItem.Event,
+        composerState: MessageComposerState,
+        timelineProtectionState: TimelineProtectionState,
+    ) {
         if (targetEvent.eventId == null) return
         timelineController.invokeOnCurrentTimeline {
             val replyToDetails = loadReplyDetails(targetEvent.eventId).map(permalinkParser)
-            val composerMode = MessageComposerMode.Reply(replyToDetails = replyToDetails)
+            val composerMode = MessageComposerMode.Reply(
+                replyToDetails = replyToDetails,
+                hideImage = timelineProtectionState.hideMediaContent(targetEvent.eventId),
+            )
             composerState.eventSink(
                 MessageComposerEvents.SetMode(composerMode)
             )
@@ -441,11 +490,17 @@ class MessagesPresenter @AssistedInject constructor(
             is TimelineItemStateContent -> event.content.body
             else -> return
         }
-
         clipboardHelper.copyPlainText(content)
-
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             snackbarDispatcher.post(SnackbarMessage(R.string.screen_room_timeline_message_copied))
+        }
+    }
+
+    private suspend fun handleCopyCaption(event: TimelineItem.Event) {
+        val content = (event.content as? TimelineItemEventContentWithAttachment)?.caption ?: return
+        clipboardHelper.copyPlainText(content)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
         }
     }
 }

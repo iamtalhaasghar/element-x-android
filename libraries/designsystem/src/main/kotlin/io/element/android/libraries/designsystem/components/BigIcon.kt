@@ -10,9 +10,12 @@ package io.element.android.libraries.designsystem.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CatchingPokemon
@@ -30,12 +33,12 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.bigIconDefaultBackgroundColor
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.ui.strings.CommonStrings
 
 /**
  * Compound component that display a big icon centered in a rounded square.
+ * Figma: https://www.figma.com/design/G1xy0HDZKJf5TCRFmKb5d5/Compound-Android-Components?node-id=1960-553&node-type=frame&m=dev
  */
 object BigIcon {
     /**
@@ -48,8 +51,13 @@ object BigIcon {
          *
          * @param vectorIcon the [ImageVector] to display
          * @param contentDescription the content description of the icon, if any. It defaults to `null`
+         * @param useCriticalTint whether the icon and background should be rendered using critical tint
          */
-        data class Default(val vectorIcon: ImageVector, val contentDescription: String? = null) : Style
+        data class Default(
+            val vectorIcon: ImageVector,
+            val contentDescription: String? = null,
+            val useCriticalTint: Boolean = false,
+        ) : Style
 
         /**
          * An alert style with a transparent background.
@@ -84,25 +92,40 @@ object BigIcon {
         modifier: Modifier = Modifier,
     ) {
         val backgroundColor = when (style) {
-            is Style.Default -> ElementTheme.colors.bigIconDefaultBackgroundColor
-            Style.Alert, Style.Success -> Color.Transparent
+            is Style.Default -> if (style.useCriticalTint) {
+                ElementTheme.colors.bgCriticalSubtle
+            } else {
+                ElementTheme.colors.bgSubtleSecondary
+            }
+            Style.Alert,
+            Style.Success -> Color.Transparent
             Style.AlertSolid -> ElementTheme.colors.bgCriticalSubtle
             Style.SuccessSolid -> ElementTheme.colors.bgSuccessSubtle
         }
         val icon = when (style) {
             is Style.Default -> style.vectorIcon
-            Style.Alert, Style.AlertSolid -> CompoundIcons.Error()
-            Style.Success, Style.SuccessSolid -> CompoundIcons.CheckCircleSolid()
+            Style.Alert,
+            Style.AlertSolid -> CompoundIcons.Error()
+            Style.Success,
+            Style.SuccessSolid -> CompoundIcons.CheckCircleSolid()
         }
         val contentDescription = when (style) {
             is Style.Default -> style.contentDescription
-            Style.Alert, Style.AlertSolid -> stringResource(CommonStrings.common_error)
-            Style.Success, Style.SuccessSolid -> stringResource(CommonStrings.common_success)
+            Style.Alert,
+            Style.AlertSolid -> stringResource(CommonStrings.common_error)
+            Style.Success,
+            Style.SuccessSolid -> stringResource(CommonStrings.common_success)
         }
         val iconTint = when (style) {
-            is Style.Default -> ElementTheme.colors.iconSecondaryAlpha
-            Style.Alert, Style.AlertSolid -> ElementTheme.colors.iconCriticalPrimary
-            Style.Success, Style.SuccessSolid -> ElementTheme.colors.iconSuccessPrimary
+            is Style.Default -> if (style.useCriticalTint) {
+                ElementTheme.colors.iconCriticalPrimary
+            } else {
+                ElementTheme.colors.iconSecondary
+            }
+            Style.Alert,
+            Style.AlertSolid -> ElementTheme.colors.iconCriticalPrimary
+            Style.Success,
+            Style.SuccessSolid -> ElementTheme.colors.iconSuccessPrimary
         }
         Box(
             modifier = modifier
@@ -123,23 +146,32 @@ object BigIcon {
 
 @PreviewsDayNight
 @Composable
-internal fun BigIconPreview() {
-    ElementPreview {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(10.dp)) {
-            val provider = BigIconStylePreviewProvider()
-            for (style in provider.values) {
+internal fun BigIconPreview() = ElementPreview {
+    LazyVerticalGrid(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp),
+        columns = GridCells.Adaptive(minSize = 64.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(BigIconStyleProvider().values.toList()) { style ->
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
                 BigIcon(style = style)
             }
         }
     }
 }
 
-internal class BigIconStylePreviewProvider : PreviewParameterProvider<BigIcon.Style> {
+internal class BigIconStyleProvider : PreviewParameterProvider<BigIcon.Style> {
     override val values: Sequence<BigIcon.Style>
         get() = sequenceOf(
             BigIcon.Style.Default(Icons.Filled.CatchingPokemon),
             BigIcon.Style.Alert,
             BigIcon.Style.AlertSolid,
+            BigIcon.Style.Default(Icons.Filled.CatchingPokemon, useCriticalTint = true),
             BigIcon.Style.Success,
             BigIcon.Style.SuccessSolid
         )

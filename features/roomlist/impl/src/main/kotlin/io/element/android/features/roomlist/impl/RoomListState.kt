@@ -46,15 +46,10 @@ data class RoomListState(
             val isDm: Boolean,
             val isFavorite: Boolean,
             val markAsUnreadFeatureFlagEnabled: Boolean,
+            val eventCacheFeatureFlagEnabled: Boolean,
             val hasNewContent: Boolean,
         ) : ContextMenu
     }
-}
-
-enum class InvitesState {
-    NoInvites,
-    SeenInvites,
-    NewInvites,
 }
 
 enum class SecurityBannerState {
@@ -67,7 +62,9 @@ enum class SecurityBannerState {
 @Immutable
 sealed interface RoomListContentState {
     data class Skeleton(val count: Int) : RoomListContentState
-    data object Empty : RoomListContentState
+    data class Empty(
+        val securityBannerState: SecurityBannerState,
+    ) : RoomListContentState
     data class Rooms(
         val securityBannerState: SecurityBannerState,
         val fullScreenIntentPermissionsState: FullScreenIntentPermissionsState,

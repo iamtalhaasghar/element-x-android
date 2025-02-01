@@ -14,7 +14,7 @@ import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPr
 import io.element.android.features.messages.impl.timeline.di.aFakeTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
-import io.element.android.features.messages.impl.typing.aTypingNotificationState
+import io.element.android.features.messages.impl.timeline.protection.aTimelineProtectionState
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import kotlinx.collections.immutable.toImmutableList
@@ -26,7 +26,9 @@ internal fun TimelineViewMessageShieldPreview() = ElementPreview {
     // For consistency, ensure that there is a message in the timeline (the last one) with an error.
     val messageShield = aCriticalShield()
     val items = listOf(
-        (timelineItems.first() as TimelineItem.Event).copy(messageShield = messageShield)
+        (timelineItems.first() as TimelineItem.Event).copy(
+            messageShieldProvider = { messageShield },
+        )
     ) + timelineItems.drop(1)
     CompositionLocalProvider(
         LocalTimelineItemPresenterFactories provides aFakeTimelineItemPresenterFactories(),
@@ -36,10 +38,10 @@ internal fun TimelineViewMessageShieldPreview() = ElementPreview {
                 timelineItems = items.toImmutableList(),
                 messageShield = messageShield,
             ),
-            typingNotificationState = aTypingNotificationState(),
+            timelineProtectionState = aTimelineProtectionState(),
             onUserDataClick = {},
             onLinkClick = {},
-            onMessageClick = {},
+            onContentClick = {},
             onMessageLongClick = {},
             onSwipeToReply = {},
             onReactionClick = { _, _ -> },

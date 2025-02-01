@@ -1,3 +1,5 @@
+import extension.setupAnvil
+
 /*
  * Copyright 2022-2024 New Vector Ltd.
  *
@@ -7,7 +9,6 @@
 
 plugins {
     id("io.element.android-compose-library")
-    alias(libs.plugins.anvil)
     id("kotlin-parcelize")
 }
 
@@ -20,18 +21,15 @@ android {
     }
 }
 
-anvil {
-    generateDaggerFactories.set(true)
-}
+setupAnvil()
 
 dependencies {
-    implementation(projects.anvilannotations)
-    anvil(projects.anvilcodegen)
     api(projects.features.messages.api)
     implementation(projects.appconfig)
     implementation(projects.features.call.api)
     implementation(projects.features.location.api)
     implementation(projects.features.poll.api)
+    implementation(projects.features.roomcall.api)
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
@@ -49,6 +47,7 @@ dependencies {
     implementation(projects.libraries.permissions.api)
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.roomselect.api)
+    implementation(projects.libraries.voiceplayer.api)
     implementation(projects.libraries.voicerecorder.api)
     implementation(projects.libraries.mediaplayer.api)
     implementation(projects.libraries.uiUtils)
@@ -67,6 +66,7 @@ dependencies {
     implementation(libs.vanniktech.blurhash)
     implementation(libs.telephoto.zoomableimage)
     implementation(libs.matrix.emojibase.bindings)
+    implementation(projects.features.knockrequests.api)
 
     testImplementation(libs.test.junit)
     testImplementation(libs.coroutines.test)

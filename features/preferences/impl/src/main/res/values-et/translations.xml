@@ -8,6 +8,8 @@
   <string name="screen_advanced_settings_element_call_base_url">"Element Calli kohandatud teenuseaadress"</string>
   <string name="screen_advanced_settings_element_call_base_url_description">"Seadista kohandatud teenuseaadress Element Calli jaoks."</string>
   <string name="screen_advanced_settings_element_call_base_url_validation_error">"Vigane url. Palun vaata, et url algaks protokolliga (http/https) ning aadress ise oleks ka õige."</string>
+  <string name="screen_advanced_settings_media_compression_description">"Sellega laadid fotosid ja videoid kiiremini üles ning vähendad andmemahtu"</string>
+  <string name="screen_advanced_settings_media_compression_title">"Optimeeri meedia kvaliteeti"</string>
   <string name="screen_advanced_settings_push_provider_android">"Tõuketeavituste pakkuja"</string>
   <string name="screen_advanced_settings_rich_text_editor_description">"Kui soovid Markdown-vormingut käsitsi lisada, siis lülita vormindatud teksti toimeti välja."</string>
   <string name="screen_advanced_settings_send_read_receipts">"Lugemisteatised"</string>
@@ -44,7 +46,7 @@ Kui sa jätkad muutmist, siis võivad muutuda ka need peidetud eelistused."</str
   <string name="screen_notification_settings_group_chats">"Rühmavestlused"</string>
   <string name="screen_notification_settings_invite_for_me_label">"Kutsed"</string>
   <string name="screen_notification_settings_mentions_only_disclaimer">"Sinu koduserver ei toeta seda funktsionaalsust krüptitud jututubades ja seega ei pruugi kõik teavitused sinuni jõuda."</string>
-  <string name="screen_notification_settings_mentions_section_title">"Mainimised"</string>
+  <string name="screen_notification_settings_mentions_section_title">"Mainimiste alusel"</string>
   <string name="screen_notification_settings_mode_all">"Kõik"</string>
   <string name="screen_notification_settings_mode_mentions">"Mainimiste alusel"</string>
   <string name="screen_notification_settings_notification_section_title">"Teavita mind"</string>

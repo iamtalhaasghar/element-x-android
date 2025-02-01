@@ -22,13 +22,13 @@ import dagger.assisted.AssistedInject
 import io.element.android.anvilannotations.ContributesNode
 import io.element.android.features.securebackup.api.SecureBackupEntryPoint
 import io.element.android.features.securebackup.impl.disable.SecureBackupDisableNode
-import io.element.android.features.securebackup.impl.enable.SecureBackupEnableNode
 import io.element.android.features.securebackup.impl.enter.SecureBackupEnterRecoveryKeyNode
 import io.element.android.features.securebackup.impl.reset.ResetIdentityFlowNode
 import io.element.android.features.securebackup.impl.root.SecureBackupRootNode
 import io.element.android.features.securebackup.impl.setup.SecureBackupSetupNode
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
+import io.element.android.libraries.architecture.appyx.canPop
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
 import kotlinx.parcelize.Parcelize
@@ -64,9 +64,6 @@ class SecureBackupFlowNode @AssistedInject constructor(
         data object Disable : NavTarget
 
         @Parcelize
-        data object Enable : NavTarget
-
-        @Parcelize
         data object EnterRecoveryKey : NavTarget
 
         @Parcelize
@@ -91,10 +88,6 @@ class SecureBackupFlowNode @AssistedInject constructor(
                         backstack.push(NavTarget.Disable)
                     }
 
-                    override fun onEnableClick() {
-                        backstack.push(NavTarget.Enable)
-                    }
-
                     override fun onConfirmRecoveryKeyClick() {
                         backstack.push(NavTarget.EnterRecoveryKey)
                     }
@@ -116,16 +109,13 @@ class SecureBackupFlowNode @AssistedInject constructor(
             NavTarget.Disable -> {
                 createNode<SecureBackupDisableNode>(buildContext)
             }
-            NavTarget.Enable -> {
-                createNode<SecureBackupEnableNode>(buildContext)
-            }
             NavTarget.EnterRecoveryKey -> {
                 val callback = object : SecureBackupEnterRecoveryKeyNode.Callback {
                     override fun onEnterRecoveryKeySuccess() {
-                        if (callbacks.isNotEmpty()) {
-                            callbacks.forEach { it.onDone() }
-                        } else {
+                        if (backstack.canPop()) {
                             backstack.pop()
+                        } else {
+                            callbacks.forEach { it.onDone() }
                         }
                     }
                 }

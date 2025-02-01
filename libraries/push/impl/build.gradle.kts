@@ -1,3 +1,5 @@
+import extension.setupAnvil
+
 /*
  * Copyright 2023, 2024 New Vector Ltd.
  *
@@ -5,8 +7,7 @@
  * Please see LICENSE in the repository root for full details.
  */
 plugins {
-    id("io.element.android-library")
-    alias(libs.plugins.anvil)
+    id("io.element.android-compose-library")
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -20,9 +21,7 @@ android {
     }
 }
 
-anvil {
-    generateDaggerFactories.set(true)
-}
+setupAnvil()
 
 dependencies {
     implementation(libs.dagger)
@@ -44,6 +43,7 @@ dependencies {
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.preferences.api)
+    implementation(projects.libraries.sessionStorage.api)
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.troubleshoot.api)
     implementation(projects.features.call.api)
@@ -65,6 +65,7 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.libraries.preferences.test)
+    testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.push.test)
     testImplementation(projects.libraries.pushproviders.test)
     testImplementation(projects.libraries.pushstore.test)

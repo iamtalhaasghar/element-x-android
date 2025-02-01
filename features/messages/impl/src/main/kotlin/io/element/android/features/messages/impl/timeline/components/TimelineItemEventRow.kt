@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -69,6 +70,9 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionEvent
+import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
+import io.element.android.features.messages.impl.timeline.protection.mustBeProtected
 import io.element.android.libraries.designsystem.colors.AvatarColorsProvider
 import io.element.android.libraries.designsystem.components.EqualWidthColumn
 import io.element.android.libraries.designsystem.components.avatar.Avatar
@@ -107,10 +111,11 @@ private val BUBBLE_INCOMING_OFFSET = 16.dp
 fun TimelineItemEventRow(
     event: TimelineItem.Event,
     timelineRoomInfo: TimelineRoomInfo,
+    timelineProtectionState: TimelineProtectionState,
     renderReadReceipts: Boolean,
     isLastOutgoingMessage: Boolean,
     isHighlighted: Boolean,
-    onClick: () -> Unit,
+    onEventClick: () -> Unit,
     onLongClick: () -> Unit,
     onLinkClick: (String) -> Unit,
     onUserDataClick: (UserId) -> Unit,
@@ -123,8 +128,15 @@ fun TimelineItemEventRow(
     eventSink: (TimelineEvents.EventFromTimelineItem) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit = { contentModifier, onContentLayoutChange ->
+        // Only pass down a custom clickable lambda if the content can be clicked separately
+        val onContentClick = onEventClick.takeUnless { event.isWholeContentClickable }
+
         TimelineItemEventContentView(
             content = event.content,
+            hideMediaContent = timelineProtectionState.hideMediaContent(event.eventId),
+            onContentClick = onContentClick,
+            onLongClick = onLongClick,
+            onShowContentClick = { timelineProtectionState.eventSink(TimelineProtectionEvent.ShowContent(event.eventId)) },
             onLinkClick = onLinkClick,
             eventSink = eventSink,
             modifier = contentModifier,
@@ -134,6 +146,13 @@ fun TimelineItemEventRow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
+
+    val onContentClick = if (event.mustBeProtected()) {
+        // In this case, let the content handle the click
+        {}
+    } else {
+        onEventClick
+    }
 
     fun onUserDataClick() {
         onUserDataClick(event.senderId)
@@ -163,10 +182,11 @@ fun TimelineItemEventRow(
                     }
                     TimelineItemEventRowContent(
                         event = event,
+                        timelineProtectionState = timelineProtectionState,
                         isHighlighted = isHighlighted,
                         timelineRoomInfo = timelineRoomInfo,
                         interactionSource = interactionSource,
-                        onClick = onClick,
+                        onContentClick = onContentClick,
                         onLongClick = onLongClick,
                         inReplyToClick = ::inReplyToClick,
                         onUserDataClick = ::onUserDataClick,
@@ -196,10 +216,11 @@ fun TimelineItemEventRow(
         } else {
             TimelineItemEventRowContent(
                 event = event,
+                timelineProtectionState = timelineProtectionState,
                 isHighlighted = isHighlighted,
                 timelineRoomInfo = timelineRoomInfo,
                 interactionSource = interactionSource,
-                onClick = onClick,
+                onContentClick = onContentClick,
                 onLongClick = onLongClick,
                 inReplyToClick = ::inReplyToClick,
                 onUserDataClick = ::onUserDataClick,
@@ -251,10 +272,11 @@ private fun SwipeSensitivity(
 @Composable
 private fun TimelineItemEventRowContent(
     event: TimelineItem.Event,
+    timelineProtectionState: TimelineProtectionState,
     isHighlighted: Boolean,
     timelineRoomInfo: TimelineRoomInfo,
     interactionSource: MutableInteractionSource,
-    onClick: () -> Unit,
+    onContentClick: () -> Unit,
     onLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     onUserDataClick: () -> Unit,
@@ -292,6 +314,8 @@ private fun TimelineItemEventRowContent(
                 Modifier
                     .constrainAs(sender) {
                         top.linkTo(parent.top)
+                        // Required for correct RTL layout
+                        start.linkTo(parent.start)
                     }
                     .padding(horizontal = 16.dp)
                     .zIndex(1f)
@@ -314,7 +338,12 @@ private fun TimelineItemEventRowContent(
         MessageEventBubble(
             modifier = Modifier
                 .constrainAs(message) {
-                    top.linkTo(sender.bottom, margin = NEGATIVE_MARGIN_FOR_BUBBLE)
+                    val topMargin = if (bubbleState.cutTopStart) {
+                        NEGATIVE_MARGIN_FOR_BUBBLE
+                    } else {
+                        0.dp
+                    }
+                    top.linkTo(sender.bottom, margin = topMargin)
                     if (event.isMine) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
@@ -324,11 +353,12 @@ private fun TimelineItemEventRowContent(
                 },
             state = bubbleState,
             interactionSource = interactionSource,
-            onClick = onClick,
+            onClick = onContentClick,
             onLongClick = onLongClick,
         ) {
             MessageEventBubbleContent(
                 event = event,
+                timelineProtectionState = timelineProtectionState,
                 onMessageLongClick = onLongClick,
                 inReplyToClick = inReplyToClick,
                 eventSink = eventSink,
@@ -394,7 +424,7 @@ private fun MessageSenderInformation(
     senderAvatar: AvatarData,
     modifier: Modifier = Modifier
 ) {
-    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id, ElementTheme.isLightTheme)
+    val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
     Row(modifier = modifier) {
         Avatar(senderAvatar)
         Spacer(modifier = Modifier.width(4.dp))
@@ -410,6 +440,7 @@ private fun MessageSenderInformation(
 @Composable
 private fun MessageEventBubbleContent(
     event: TimelineItem.Event,
+    timelineProtectionState: TimelineProtectionState,
     onMessageLongClick: () -> Unit,
     inReplyToClick: () -> Unit,
     eventSink: (TimelineEvents.EventFromTimelineItem) -> Unit,
@@ -455,6 +486,8 @@ private fun MessageEventBubbleContent(
         canShrinkContent: Boolean = false,
         content: @Composable (onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit) -> Unit,
     ) {
+        @Suppress("NAME_SHADOWING")
+        val content = remember { movableContentOf(content) }
         when (timestampPosition) {
             TimestampPosition.Overlay ->
                 Box(modifier, contentAlignment = Alignment.Center) {
@@ -507,32 +540,33 @@ private fun MessageEventBubbleContent(
     fun CommonLayout(
         timestampPosition: TimestampPosition,
         showThreadDecoration: Boolean,
+        paddingBehaviour: ContentPadding,
         inReplyToDetails: InReplyToDetails?,
         modifier: Modifier = Modifier,
         canShrinkContent: Boolean = false,
     ) {
-        val timestampLayoutModifier: Modifier
-        val contentModifier: Modifier
-        when {
-            inReplyToDetails != null -> {
-                if (timestampPosition == TimestampPosition.Overlay) {
-                    timestampLayoutModifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
-                    contentModifier = Modifier.clip(RoundedCornerShape(12.dp))
+        val timestampLayoutModifier =
+            if (inReplyToDetails != null && timestampPosition == TimestampPosition.Overlay) {
+                Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+            } else {
+                Modifier
+            }
+
+        val topPadding = if (inReplyToDetails != null) 0.dp else 8.dp
+        val contentModifier = when (paddingBehaviour) {
+            ContentPadding.Textual ->
+                Modifier.padding(start = 12.dp, end = 12.dp, top = topPadding, bottom = 8.dp)
+            ContentPadding.Media -> {
+                if (inReplyToDetails == null) {
+                    Modifier
                 } else {
-                    contentModifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 8.dp)
-                    timestampLayoutModifier = Modifier
+                    Modifier.clip(RoundedCornerShape(10.dp))
                 }
             }
-            timestampPosition != TimestampPosition.Overlay -> {
-                timestampLayoutModifier = Modifier
-                contentModifier = Modifier
-                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
-            }
-            else -> {
-                timestampLayoutModifier = Modifier
-                contentModifier = Modifier
-            }
+            ContentPadding.CaptionedMedia ->
+                Modifier.padding(start = 8.dp, end = 8.dp, top = topPadding, bottom = 8.dp)
         }
+
         val threadDecoration = @Composable {
             if (showThreadDecoration) {
                 ThreadDecoration(modifier = Modifier.padding(top = 8.dp, start = 12.dp, end = 12.dp))
@@ -557,7 +591,11 @@ private fun MessageEventBubbleContent(
                 .clip(RoundedCornerShape(6.dp))
                 // FIXME when a node is clickable, its contents won't be added to the semantics tree of its parent
                 .clickable(onClick = inReplyToClick)
-            InReplyToView(inReplyTo, modifier = inReplyToModifier)
+            InReplyToView(
+                inReplyTo = inReplyTo,
+                hideImage = timelineProtectionState.hideMediaContent(inReplyTo.eventId()),
+                modifier = inReplyToModifier,
+            )
         }
         if (inReplyToDetails != null) {
             // Use SubComposeLayout only if necessary as it can have consequences on the performance.
@@ -582,9 +620,17 @@ private fun MessageEventBubbleContent(
         is TimelineItemPollContent -> TimestampPosition.Below
         else -> TimestampPosition.Default
     }
+    val paddingBehaviour = when (event.content) {
+        is TimelineItemImageContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
+        is TimelineItemVideoContent -> if (event.content.showCaption) ContentPadding.CaptionedMedia else ContentPadding.Media
+        is TimelineItemStickerContent,
+        is TimelineItemLocationContent -> ContentPadding.Media
+        else -> ContentPadding.Textual
+    }
     CommonLayout(
         showThreadDecoration = event.isThreaded,
         timestampPosition = timestampPosition,
+        paddingBehaviour = paddingBehaviour,
         inReplyToDetails = event.inReplyTo,
         canShrinkContent = event.content is TimelineItemVoiceContent,
         modifier = bubbleModifier.semantics(mergeDescendants = true) {
@@ -612,7 +658,7 @@ internal fun TimelineItemEventRowPreview() = ElementPreview {
             ATimelineItemEventRow(
                 event = aTimelineItemEvent(
                     isMine = isMine,
-                    content = aTimelineItemImageContent().copy(
+                    content = aTimelineItemImageContent(
                         aspectRatio = 2.5f
                     ),
                     groupPosition = TimelineItemGroupPosition.Last,

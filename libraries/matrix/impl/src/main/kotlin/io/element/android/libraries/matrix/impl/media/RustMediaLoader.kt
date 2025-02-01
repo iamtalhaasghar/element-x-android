@@ -15,7 +15,6 @@ import io.element.android.libraries.matrix.api.media.MediaSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.withContext
 import org.matrix.rustcomponents.sdk.Client
-import org.matrix.rustcomponents.sdk.mediaSourceFromUrl
 import org.matrix.rustcomponents.sdk.use
 import java.io.File
 import org.matrix.rustcomponents.sdk.MediaSource as RustMediaSource
@@ -37,7 +36,7 @@ class RustMediaLoader(
         withContext(mediaDispatcher) {
             runCatching {
                 source.toRustMediaSource().use { source ->
-                    innerClient.getMediaContent(source).toUByteArray().toByteArray()
+                    innerClient.getMediaContent(source)
                 }
             }
         }
@@ -55,7 +54,7 @@ class RustMediaLoader(
                         mediaSource = mediaSource,
                         width = width.toULong(),
                         height = height.toULong()
-                    ).toUByteArray().toByteArray()
+                    )
                 }
             }
         }
@@ -63,7 +62,7 @@ class RustMediaLoader(
     override suspend fun downloadMediaFile(
         source: MediaSource,
         mimeType: String?,
-        body: String?,
+        filename: String?,
         useCache: Boolean,
     ): Result<MediaFile> =
         withContext(mediaDispatcher) {
@@ -71,7 +70,7 @@ class RustMediaLoader(
                 source.toRustMediaSource().use { mediaSource ->
                     val mediaFile = innerClient.getMediaFile(
                         mediaSource = mediaSource,
-                        body = body,
+                        filename = filename,
                         mimeType = mimeType?.takeIf { MimeTypes.hasSubtype(it) } ?: MimeTypes.OctetStream,
                         useCache = useCache,
                         tempDir = cacheDirectory.path,
@@ -86,7 +85,7 @@ class RustMediaLoader(
         return if (json != null) {
             RustMediaSource.fromJson(json)
         } else {
-            mediaSourceFromUrl(url)
+            RustMediaSource.fromUrl(url)
         }
     }
 }

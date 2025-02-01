@@ -10,17 +10,20 @@ package io.element.android.features.messages.impl.timeline.model.event
 import io.element.android.libraries.matrix.api.media.MediaSource
 
 data class TimelineItemStickerContent(
-    val body: String,
-    val mediaSource: MediaSource,
+    override val filename: String,
+    override val caption: String?,
+    override val formattedCaption: CharSequence?,
+    override val isEdited: Boolean,
+    override val mediaSource: MediaSource,
     val thumbnailSource: MediaSource?,
-    val formattedFileSize: String,
-    val fileExtension: String,
-    val mimeType: String,
+    override val formattedFileSize: String,
+    override val fileExtension: String,
+    override val mimeType: String,
     val blurhash: String?,
     val width: Int?,
     val height: Int?,
     val aspectRatio: Float?
-) : TimelineItemEventContent {
+) : TimelineItemEventContentWithAttachment {
     override val type: String = "TimelineItemStickerContent"
 
     /* Stickers are supposed to be small images so
